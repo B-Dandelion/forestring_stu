@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:forestring_stu/view/auth/auth_page.dart';
+import 'package:forestring_stu/view/qr/qr_check.dart';
+import 'package:forestring_stu/view/reschedule/reschedule_page.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/intl.dart';
 
@@ -25,7 +28,7 @@ class BaseAppBar extends StatelessWidget implements PreferredSizeWidget {
       backgroundColor: PRIMARY_COLOR,
       iconTheme: const IconThemeData(color: Colors.white),
       title: Text(
-        "$title",
+        title,
         style: const TextStyle(
             color: Colors.white,
             fontFamily: 'OpenSans',
@@ -101,7 +104,7 @@ class BaseDrawer extends StatelessWidget {
             ),
             onTap: () {
               Navigator.of(context).push(
-                _createRoute(My_page()),
+                _createRoute(const My_page()),
               );
             },
             trailing: const Icon(Icons.navigate_next_rounded),
@@ -120,7 +123,7 @@ class BaseDrawer extends StatelessWidget {
             ),
             onTap: () {
               Navigator.of(context).push(
-                _createRoute(Home_page()),
+                _createRoute(const Home_page()),
               );
             },
             trailing: const Icon(Icons.navigate_next_rounded),
@@ -137,7 +140,11 @@ class BaseDrawer extends StatelessWidget {
                 fontWeight: FontWeight.w300,
               ),
             ),
-            onTap: () {},
+            onTap: () {
+              Navigator.of(context).push(
+                _createRoute(const ReschedulePage()),
+              );
+            },
             trailing: const Icon(Icons.navigate_next_rounded),
           ),
           ListTile(
@@ -152,7 +159,11 @@ class BaseDrawer extends StatelessWidget {
                 fontWeight: FontWeight.w300,
               ),
             ),
-            onTap: () {},
+            onTap: () {
+              Navigator.of(context).push(
+                _createRoute(const QRCheckScreen()),
+              );
+            },
             trailing: const Icon(Icons.navigate_next_rounded),
           ),
           ListTile(
@@ -167,7 +178,11 @@ class BaseDrawer extends StatelessWidget {
                 fontWeight: FontWeight.w300,
               ),
             ),
-            onTap: () {},
+            onTap: () {
+              Navigator.of(context).push(
+                _createRoute(const Auth_page()),
+              );
+            },
             trailing: const Icon(Icons.navigate_next_rounded),
           )
         ],
@@ -183,7 +198,7 @@ class MainCalendar extends StatelessWidget {
   final OnDaySelected onDaySelected;
   final DateTime selectedDate;
 
-  const MainCalendar({
+  const MainCalendar({super.key, 
     required this.onDaySelected,
     required this.selectedDate,
   });

@@ -1,10 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:forestring_stu/view/home_page.dart';
 import 'package:forestring_stu/data/constant.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class Auth_page extends StatefulWidget {
   const Auth_page({super.key});
@@ -14,7 +11,7 @@ class Auth_page extends StatefulWidget {
 }
 
 class _Auth_page extends State<Auth_page> {
-  String _message = '';
+  final String _message = '';
   bool _isChecked = false;
   final id_controller = TextEditingController();
   final pw_controller = TextEditingController();
@@ -126,7 +123,7 @@ class _Auth_page extends State<Auth_page> {
                   onPressed: () {
                     Navigator.of(context)
                         .pushReplacement(MaterialPageRoute(builder: (context) {
-                      return Home_page();
+                      return const Home_page();
                     }));
                   },
                   child: const Text(

@@ -1,14 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:forestring_stu/view/home_page.dart';
 import 'package:forestring_stu/data/constant.dart';
 import 'package:forestring_stu/view/auth/auth_page.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'dart:async';
 
 Route _createRoute() {
   return PageRouteBuilder(
-    pageBuilder: (context, animation, secondaryAnimation) => Auth_page(),
+    pageBuilder: (context, animation, secondaryAnimation) => const Auth_page(),
     transitionsBuilder: (context, animation, secondaryAnimation, child) {
       const begin = Offset(0.0, 1.0);
       const end = Offset.zero;

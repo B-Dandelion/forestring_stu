@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:forestring_stu/data/constant.dart';
-import 'package:forestring_stu/view/home_page.dart';
 import 'package:forestring_stu/data/schedule_card.dart';
 
 Route _createRoute(Page) {
@@ -79,8 +78,10 @@ class _My_page extends State<My_page> {
                   ]),
               const SizedBox(height: 20.0),
               const ScheduleCard(
-                  startTime: 12,
-                  endTime: 13,
+                  startTimeA: 12,
+                  startTimeB: 30,
+                  endTimeA: 13,
+                  endTimeB: 00,
                   month: 9,
                   date: 13,
                   content: '김진아 선생님'),
@@ -113,8 +114,10 @@ class _My_page extends State<My_page> {
                   ]),
               const SizedBox(height: 20.0),
               const ScheduleCard(
-                  startTime: 12,
-                  endTime: 13,
+                  startTimeA: 12,
+                  startTimeB: 30,
+                  endTimeA: 13,
+                  endTimeB: 00,
                   month: 9,
                   date: 13,
                   content: '김진아 선생님'),
