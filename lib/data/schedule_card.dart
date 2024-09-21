@@ -2,22 +2,18 @@ import 'package:forestring_stu/data/constant.dart';
 import 'package:flutter/material.dart';
 
 class ScheduleCard extends StatelessWidget {
-  final int startTimeA;
-  final int startTimeB;
-  final int endTimeA;
-  final int endTimeB;
+  final int startTime;
+  final int endTime;
   final int month;
   final int date;
-  final String content;
+  final String teacher;
 
   const ScheduleCard({
-    required this.startTimeA,
-    required this.startTimeB,
-    required this.endTimeA,
-    required this.endTimeB,
+    required this.startTime,
+    required this.endTime,
     required this.month,
     required this.date,
-    required this.content,
+    required this.teacher,
     super.key,
   });
 
@@ -39,9 +35,9 @@ class ScheduleCard extends StatelessWidget {
                 children: [
                   _Date(month: month, date: date),
                   const SizedBox(width: 16.0),
-                  _Time(startTimeA: startTimeA, startTimeB: startTimeB, endTimeA: endTimeA, endTimeB: endTimeB),
+                  _Time(startTime: startTime, endTime: endTime ),
                   const SizedBox(width: 15.0),
-                  _Content(content: content),
+                  _Content(teacher: teacher),
                 ],
               ),
             )));
@@ -87,20 +83,22 @@ class _Date extends StatelessWidget {
 }
 
 class _Time extends StatelessWidget {
-  final int startTimeA;
-  final int startTimeB;
-  final int endTimeA;
-  final int endTimeB;
+  final int startTime;
+  final int endTime;
 
-  const _Time({
-    required this.startTimeA,
-    required this.startTimeB,
-    required this.endTimeA,
-    required this.endTimeB,
+
+  _Time({
+    required this.startTime,
+    required this.endTime,
   });
 
   @override
   Widget build(BuildContext context) {
+    int sT1 = startTime~/100;
+    int sT2 = startTime%100;
+    int eT1 = endTime~/100;
+    int eT2 = endTime%100;
+
     const textStyle = TextStyle(
       fontFamily: 'ELAND',
       fontWeight: FontWeight.w300,
@@ -110,20 +108,20 @@ class _Time extends StatelessWidget {
 
     return Column(children: [
       Text(
-        '$startTimeA:${startTimeB.toString().padLeft(2,'0')}',
+        '${sT1.toString().padLeft(2,'0')}:${sT2.toString().padLeft(2,'0')}',
         style: textStyle,
       ),
-      Text('~ $endTimeA:${endTimeB.toString().padLeft(2,'0')}',
+      Text('~ ${eT1.toString().padLeft(2,'0')}:${eT2.toString().padLeft(2,'0')}',
           style: textStyle.copyWith(fontSize: 10.0))
     ]);
   }
 }
 
 class _Content extends StatelessWidget {
-  final String content;
+  final String teacher;
 
   const _Content({
-    required this.content,
+    required this.teacher,
   });
 
   @override
@@ -138,7 +136,7 @@ class _Content extends StatelessWidget {
     return Expanded(
        child:
        Text(
-         content,
+         teacher,
          style: textStyle,
        ),
     );

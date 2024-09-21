@@ -20,13 +20,11 @@ class _ReschedulePage extends State<ReschedulePage> {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             ScheduleCard(
-                startTimeA: 12,
-                startTimeB: 30,
-                endTimeA: 13,
-                endTimeB: 00,
+                startTime: 12,
+                endTime: 13,
                 month: 9,
                 date: 26,
-                content: '김진아 선생님 / 왕십리'),
+                teacher: '김진아 선생님 / 왕십리'),
             Text('Not Yet !!',
               style: TextStyle(
                   color: Colors.black,

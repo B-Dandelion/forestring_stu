@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forestring_stu/data/constant.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class QRCheckScreen extends StatefulWidget {
   const QRCheckScreen({super.key});
@@ -26,6 +27,7 @@ class _QRCheckScreen extends State<QRCheckScreen> {
                 fontSize: 30
             ),
             ),
+
           ],
         ));
   }
