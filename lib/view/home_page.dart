@@ -59,8 +59,6 @@ class _Home_page extends State<Home_page>{
                         //     ),
                         //   );
                         // }
-                        var data = FirebaseFirestore.instance.collection('student').doc('진민경').get();
-                        var teacher = data;
 
                         // 일정 정보 오류 있을 경우 출력되는 메세지
                         if (snapshot.hasError) {
