@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../domain/lesson.dart';
+import '../domain/lesson_history.dart';
 
 class LessonFailure implements Exception {
   const LessonFailure(this.message);
@@ -32,7 +33,7 @@ class LessonRepository {
           .from('lessons')
           .select(
             'id, teacher_id, occurrence_at, starts_at, duration_minutes, '
-            'ends_at, lesson_type, status, lesson_right_id',
+            'ends_at, lesson_type, status, lesson_right_id, rescheduled_by',
           )
           .eq('student_id', user.id)
           .gte('starts_at', from.toUtc().toIso8601String())
@@ -60,6 +61,160 @@ class LessonRepository {
       throw LessonFailure(_friendlyMessage(error.message));
     } catch (error) {
       throw LessonFailure('수업 정보를 불러오지 못했습니다.\n$error');
+    }
+  }
+
+  Future<LessonHistoryData> fetchMyLessonHistory() async {
+    final user = _client.auth.currentUser;
+    if (user == null) {
+      throw const LessonFailure('로그인이 필요합니다.');
+    }
+
+    try {
+      final rightsRows = await _client
+          .from('lesson_rights')
+          .select(
+            'id, branch_id, usable_semester_id, origin, sequence_no, '
+            'duration_minutes, status, issued_at',
+          )
+          .eq('student_id', user.id)
+          .order('issued_at', ascending: false);
+
+      if ((rightsRows as List).isEmpty) {
+        return const LessonHistoryData(semesters: []);
+      }
+
+      final lessonsRows = await _client
+          .from('lessons')
+          .select(
+            'id, teacher_id, occurrence_at, starts_at, duration_minutes, '
+            'ends_at, lesson_type, status, lesson_right_id, rescheduled_by',
+          )
+          .eq('student_id', user.id)
+          .order('starts_at');
+
+      final cancellationRows = await _client
+          .from('lesson_cancellation_events')
+          .select(
+            'lesson_right_id, origin, counts_toward_limit, canceled_at, created_at',
+          )
+          .eq('student_id', user.id)
+          .order('created_at');
+
+      final semesterRows = await _client
+          .from('semesters')
+          .select('id, code, starts_on, ends_on');
+
+      List<dynamic> overrideRows = const [];
+      try {
+        overrideRows = await _client
+            .from('branch_semester_overrides')
+            .select('branch_id, semester_id, starts_on, ends_on');
+      } on PostgrestException {
+        overrideRows = const [];
+      }
+
+      final names = await _fetchVisibleProfileNames();
+
+      final lessonsByRight = <String, Lesson>{};
+      for (final raw in lessonsRows as List) {
+        final row = Map<String, dynamic>.from(raw as Map);
+        final rightId = row['lesson_right_id'] as String?;
+        if (rightId == null) {
+          continue;
+        }
+        final lesson = Lesson.fromJson(row);
+        lessonsByRight[rightId] = lesson.copyWithTeacherName(
+          names[lesson.teacherId],
+        );
+      }
+
+      final cancellationsByRight = <String, List<LessonCancellationHistory>>{};
+      for (final raw in cancellationRows as List) {
+        final row = Map<String, dynamic>.from(raw as Map);
+        final rightId = row['lesson_right_id'] as String;
+        final canceledAtValue = row['canceled_at'] ?? row['created_at'];
+        cancellationsByRight.putIfAbsent(rightId, () => []).add(
+              LessonCancellationHistory(
+                origin: row['origin'].toString(),
+                canceledAt: DateTime.parse(canceledAtValue.toString()).toLocal(),
+                countsTowardLimit: row['counts_toward_limit'] == true,
+              ),
+            );
+      }
+
+      final semestersById = <String, Map<String, dynamic>>{
+        for (final raw in semesterRows as List)
+          (raw as Map)['id'] as String: Map<String, dynamic>.from(raw),
+      };
+
+      final overridesByKey = <String, Map<String, dynamic>>{};
+      for (final raw in overrideRows) {
+        final row = Map<String, dynamic>.from(raw as Map);
+        overridesByKey['${row['branch_id']}:${row['semester_id']}'] = row;
+      }
+
+      final rightsBySemester = <String, List<LessonRightHistory>>{};
+      final branchBySemester = <String, String>{};
+
+      for (final raw in rightsRows) {
+        final row = Map<String, dynamic>.from(raw as Map);
+        final rightId = row['id'] as String;
+        final semesterId = row['usable_semester_id'] as String;
+        branchBySemester[semesterId] = row['branch_id'] as String;
+
+        rightsBySemester.putIfAbsent(semesterId, () => []).add(
+              LessonRightHistory(
+                id: rightId,
+                origin: row['origin'].toString(),
+                status: row['status'].toString(),
+                sequenceNo: row['sequence_no'] as int? ?? 0,
+                durationMinutes: row['duration_minutes'] as int,
+                lesson: lessonsByRight[rightId],
+                cancellations: cancellationsByRight[rightId] ?? const [],
+              ),
+            );
+      }
+
+      final semesterHistories = <SemesterLessonHistory>[];
+      for (final entry in rightsBySemester.entries) {
+        final semester = semestersById[entry.key];
+        if (semester == null) {
+          continue;
+        }
+
+        final branchId = branchBySemester[entry.key];
+        final override = branchId == null
+            ? null
+            : overridesByKey['$branchId:${entry.key}'];
+
+        final startsOn = DateTime.parse(
+          (override?['starts_on'] ?? semester['starts_on']).toString(),
+        );
+        final endsOn = DateTime.parse(
+          (override?['ends_on'] ?? semester['ends_on']).toString(),
+        );
+
+        final rights = [...entry.value]
+          ..sort((a, b) => a.sequenceNo.compareTo(b.sequenceNo));
+
+        semesterHistories.add(
+          SemesterLessonHistory(
+            id: entry.key,
+            code: semester['code'].toString(),
+            startsOn: startsOn,
+            endsOn: endsOn,
+            rights: rights,
+          ),
+        );
+      }
+
+      semesterHistories.sort((a, b) => b.startsOn.compareTo(a.startsOn));
+      return LessonHistoryData(semesters: semesterHistories);
+    } on PostgrestException catch (error) {
+      throw LessonFailure(_friendlyMessage(error.message));
+    } catch (error) {
+      throw LessonFailure('수강 내역을 불러오지 못했습니다.\n$error');
     }
   }
 
