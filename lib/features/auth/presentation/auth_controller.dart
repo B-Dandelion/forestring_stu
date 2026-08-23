@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../data/auth_repository.dart';
@@ -6,6 +7,8 @@ import '../domain/current_profile.dart';
 
 class AuthController extends ChangeNotifier {
   AuthController(this._repository);
+
+  static const _autoLoginKey = 'student_auto_login';
 
   final AuthRepository _repository;
 
@@ -26,6 +29,13 @@ class AuthController extends ChangeNotifier {
     _errorMessage = null;
 
     try {
+      final prefs = await SharedPreferences.getInstance();
+      final autoLogin = prefs.getBool(_autoLoginKey) ?? false;
+
+      if (!autoLogin && _repository.currentSession != null) {
+        await _repository.signOut();
+      }
+
       if (_repository.currentSession == null) {
         _profile = null;
         return;
@@ -49,6 +59,7 @@ class AuthController extends ChangeNotifier {
   Future<bool> signIn({
     required String name,
     required String pin,
+    bool rememberSession = false,
   }) async {
     if (_isLoading) {
       return false;
@@ -65,6 +76,10 @@ class AuthController extends ChangeNotifier {
       );
 
       _profile = await _repository.fetchCurrentProfile();
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_autoLoginKey, rememberSession);
+
       return true;
     } on AuthFailure catch (error) {
       _profile = null;
@@ -88,6 +103,9 @@ class AuthController extends ChangeNotifier {
 
   Future<void> signOut() async {
     await _repository.signOut();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_autoLoginKey, false);
+
     _profile = null;
     _errorMessage = null;
     notifyListeners();
