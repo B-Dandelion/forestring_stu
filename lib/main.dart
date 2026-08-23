@@ -41,7 +41,7 @@ class ForestringStudent extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: '포레스트링 수강생용',
+      title: '포레스트링 수강생',
       theme: buildForestringTheme(),
       home: const AppGate(),
     );
