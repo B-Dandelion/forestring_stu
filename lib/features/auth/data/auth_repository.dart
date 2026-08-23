@@ -93,7 +93,9 @@ class AuthRepository {
     try {
       final data = await _client
           .from('profiles')
-          .select('id, display_name, role, branch_id, is_active')
+          .select(
+            'id, display_name, role, branch_id, is_active, is_review_account',
+          )
           .eq('id', user.id)
           .single();
 
