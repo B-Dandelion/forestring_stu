@@ -123,49 +123,30 @@ class _StudentMyPageState extends State<StudentMyPage> {
                     alignment: Alignment.centerLeft,
                     child: _pill(
                       history.studentTypeLabel,
-                      background: primaryColor.withValues(alpha: 0.10),
-                      foreground: primaryColor,
+                      primaryColor.withValues(alpha: 0.10),
+                      primaryColor,
                     ),
                   ),
                   const SizedBox(height: 22),
-                  Text(
-                    '이번 학기',
-                    style: forestringTextStyle.copyWith(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
+                  _sectionTitle('이번 학기'),
                   const SizedBox(height: 10),
                   if (current == null)
                     _emptyCard('이번 학기 수강 내역이 없습니다.')
                   else ...[
                     _semesterSummary(history, current),
                     const SizedBox(height: 16),
-                    Text(
-                      '수업 내역',
-                      style: forestringTextStyle.copyWith(
-                        color: primaryColor,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
+                    _sectionTitle('수업 내역', small: true),
                     const SizedBox(height: 8),
-                    ..._lessonTimeline(history, current),
+                    ..._timeline(history, current),
                   ],
                   const SizedBox(height: 28),
-                  Text(
-                    '지난 학기',
-                    style: forestringTextStyle.copyWith(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
+                  _sectionTitle('지난 학기'),
                   const SizedBox(height: 10),
                   if (past.isEmpty)
                     _emptyCard('지난 학기 수강 내역이 없습니다.')
                   else
                     ...past.map(
-                      (semester) => _pastSemesterTile(history, semester),
+                      (semester) => _pastTile(history, semester),
                     ),
                 ],
               ),
@@ -176,18 +157,46 @@ class _StudentMyPageState extends State<StudentMyPage> {
     );
   }
 
+  Widget _sectionTitle(String text, {bool small = false}) {
+    return Text(
+      text,
+      style: forestringTextStyle.copyWith(
+        color: small ? primaryColor : Colors.black87,
+        fontSize: small ? 16 : 18,
+        fontWeight: FontWeight.w500,
+      ),
+    );
+  }
+
   Widget _semesterSummary(
     LessonHistoryData history,
     SemesterLessonHistory semester,
   ) {
-    final baseRights = semester.rights.where(
-      (right) => history.isRegular
-          ? right.origin == 'regular_base'
-          : right.origin == 'flex_base',
-    );
+    final baseCount = semester.rights
+        .where(
+          (right) => history.isRegular
+              ? right.origin == 'regular_base'
+              : right.origin == 'flex_base',
+        )
+        .length;
     final carryoverCount = semester.rights
         .where((right) => right.origin == 'carryover')
         .length;
+
+    final chips = history.isRegular
+        ? <String>[
+            '기본 생성 수업 $baseCount개',
+            '예약 ${semester.reservedRights}개',
+            if (semester.availableRights > 0)
+              '재예약 가능 ${semester.availableRights}개',
+            if (carryoverCount > 0) '이월 수강권 $carryoverCount개',
+          ]
+        : <String>[
+            '기본 수강권 $baseCount개',
+            '남은 수강권 ${semester.availableRights}개',
+            '예약/사용 ${semester.reservedRights + semester.consumedRights}개',
+            if (carryoverCount > 0) '이월 수강권 $carryoverCount개',
+          ];
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -219,35 +228,33 @@ class _StudentMyPageState extends State<StudentMyPage> {
           Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: history.isRegular
-                ? [
-                    _summaryChip('기본 생성 수업 ${baseRights.length}개'),
-                    _summaryChip('예약 ${semester.reservedRights}개'),
-                    if (semester.availableRights > 0)
-                      _summaryChip('재예약 가능 ${semester.availableRights}개'),
-                    if (carryoverCount > 0)
-                      _summaryChip('이월 수강권 $carryoverCount개'),
-                  ]
-                : [
-                    _summaryChip('기본 수강권 ${baseRights.length}개'),
-                    _summaryChip('남은 수강권 ${semester.availableRights}개'),
-                    _summaryChip(
-                      '예약/사용 ${semester.reservedRights + semester.consumedRights}개',
-                    ),
-                    if (carryoverCount > 0)
-                      _summaryChip('이월 수강권 $carryoverCount개'),
-                  ],
+            children: chips
+                .map(
+                  (text) => _pill(
+                    text,
+                    Colors.white,
+                    Colors.black87,
+                    borderColor: primaryColor.withValues(alpha: 0.18),
+                  ),
+                )
+                .toList(),
           ),
         ],
       ),
     );
   }
 
-  List<Widget> _lessonTimeline(
+  List<Widget> _timeline(
     LessonHistoryData history,
     SemesterLessonHistory semester,
   ) {
-    final rights = [...semester.rights];
+    final rights = semester.rights.where((right) {
+      if (history.isRegular) {
+        return right.origin == 'regular_base';
+      }
+      return right.origin == 'flex_base' || right.origin == 'carryover';
+    }).toList();
+
     rights.sort((a, b) {
       final aDate = a.originalStartsAt ?? a.currentStartsAt;
       final bDate = b.originalStartsAt ?? b.currentStartsAt;
@@ -263,32 +270,17 @@ class _StudentMyPageState extends State<StudentMyPage> {
     final rebookCards = <Widget>[];
 
     for (final right in rights) {
-      if (history.isRegular && right.origin != 'regular_base') {
-        continue;
-      }
-      if (history.isFlex &&
-          right.origin != 'flex_base' &&
-          right.origin != 'carryover') {
-        continue;
-      }
-
       if (right.lesson != null) {
         originalCards.add(
-          _originalLessonCard(
-            history: history,
-            right: right,
-            title: history.isRegular ? '정규 수업' : '예약 수업',
+          _originalCard(
+            history,
+            right,
+            history.isRegular ? '정규 수업' : '예약 수업',
           ),
         );
       }
-
       if (right.isRebooked) {
-        rebookCards.add(
-          _rebookedLessonCard(
-            history: history,
-            right: right,
-          ),
-        );
+        rebookCards.add(_rebookCard(history, right));
       }
     }
 
@@ -314,20 +306,20 @@ class _StudentMyPageState extends State<StudentMyPage> {
     ];
   }
 
-  Widget _originalLessonCard({
-    required LessonHistoryData history,
-    required LessonRightHistory right,
-    required String title,
-  }) {
+  Widget _originalCard(
+    LessonHistoryData history,
+    LessonRightHistory right,
+    String title,
+  ) {
     final lesson = right.lesson!;
-    final original = right.originalStartsAt ?? lesson.startsAt;
-    final originalEnd = original.add(
+    final originalStart = right.originalStartsAt ?? lesson.startsAt;
+    final originalEnd = originalStart.add(
       Duration(minutes: right.durationMinutes),
     );
     final cancellation = right.latestCancellation;
     final canceled = right.wasCanceled;
     final staffChanged = !canceled && lesson.isAcademyChanged;
-    final displayStart = staffChanged ? lesson.startsAt : original;
+    final displayStart = staffChanged ? lesson.startsAt : originalStart;
     final displayEnd = staffChanged ? lesson.endsAt : originalEnd;
 
     return Container(
@@ -351,23 +343,19 @@ class _StudentMyPageState extends State<StudentMyPage> {
                 child: Text(
                   title,
                   style: forestringTextStyle.copyWith(
+                    color: canceled ? Colors.black45 : Colors.black87,
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
-                    color: canceled ? Colors.black45 : Colors.black87,
                   ),
                 ),
               ),
               if (canceled)
-                _pill(
-                  '취소됨',
-                  background: Colors.black12,
-                  foreground: Colors.black54,
-                )
+                _pill('취소됨', Colors.black12, Colors.black54)
               else if (staffChanged)
                 _pill(
                   '변경',
-                  background: secondaryColor.withValues(alpha: 0.12),
-                  foreground: secondaryColor,
+                  secondaryColor.withValues(alpha: 0.12),
+                  secondaryColor,
                 ),
             ],
           ),
@@ -376,8 +364,8 @@ class _StudentMyPageState extends State<StudentMyPage> {
             '${DateFormat('M월 d일 HH:mm').format(displayStart)} ~ '
             '${DateFormat('HH:mm').format(displayEnd)}',
             style: forestringTextStyle.copyWith(
-              fontSize: 14,
               color: canceled ? Colors.black45 : Colors.black87,
+              fontSize: 14,
               decoration: canceled ? TextDecoration.lineThrough : null,
             ),
           ),
@@ -417,10 +405,10 @@ class _StudentMyPageState extends State<StudentMyPage> {
     );
   }
 
-  Widget _rebookedLessonCard({
-    required LessonHistoryData history,
-    required LessonRightHistory right,
-  }) {
+  Widget _rebookCard(
+    LessonHistoryData history,
+    LessonRightHistory right,
+  ) {
     final lesson = right.lesson!;
     final reservedAt = right.reservedAt;
 
@@ -450,8 +438,8 @@ class _StudentMyPageState extends State<StudentMyPage> {
               ),
               _pill(
                 '재예약',
-                background: secondaryColor.withValues(alpha: 0.14),
-                foreground: secondaryColor,
+                secondaryColor.withValues(alpha: 0.14),
+                secondaryColor,
               ),
             ],
           ),
@@ -487,10 +475,14 @@ class _StudentMyPageState extends State<StudentMyPage> {
     );
   }
 
-  Widget _pastSemesterTile(
+  Widget _pastTile(
     LessonHistoryData history,
     SemesterLessonHistory semester,
   ) {
+    final regularCount = semester.rights
+        .where((right) => right.origin == 'regular_base')
+        .length;
+
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
       elevation: 0,
@@ -507,7 +499,7 @@ class _StudentMyPageState extends State<StudentMyPage> {
         ),
         subtitle: Text(
           history.isRegular
-              ? '기본 수업 ${semester.rights.where((r) => r.origin == 'regular_base').length}개'
+              ? '기본 수업 $regularCount개'
               : '수강권 ${semester.totalRights}개 · 남은 ${semester.availableRights}개',
           style: forestringTextStyle.copyWith(
             color: Colors.black54,
@@ -518,25 +510,16 @@ class _StudentMyPageState extends State<StudentMyPage> {
         children: [
           _semesterSummary(history, semester),
           const SizedBox(height: 10),
-          ..._lessonTimeline(history, semester),
+          ..._timeline(history, semester),
         ],
       ),
     );
   }
 
-  Widget _summaryChip(String text) {
-    return _pill(
-      text,
-      background: Colors.white,
-      foreground: Colors.black87,
-      borderColor: primaryColor.withValues(alpha: 0.18),
-    );
-  }
-
   Widget _pill(
-    String text, {
-    required Color background,
-    required Color foreground,
+    String text,
+    Color background,
+    Color foreground, {
     Color? borderColor,
   }) {
     return Container(
