@@ -102,6 +102,16 @@ class Lesson {
   }
 }
 
+class LessonBookingWindow {
+  const LessonBookingWindow({
+    required this.startsOn,
+    required this.endsOn,
+  });
+
+  final DateTime startsOn;
+  final DateTime endsOn;
+}
+
 class LessonBookingOption {
   const LessonBookingOption({
     required this.startsAt,
