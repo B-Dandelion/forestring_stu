@@ -105,13 +105,27 @@ class LessonRepository {
           .eq('semester_id', semesterId)
           .maybeSingle();
 
-      final startsOn = override?['starts_on'] ?? semester['starts_on'];
-      final endsOn = override?['ends_on'] ?? semester['ends_on'];
+      final startsOn = DateTime.parse(
+        (override?['starts_on'] ?? semester['starts_on']).toString(),
+      );
+      final endsOn = DateTime.parse(
+        (override?['ends_on'] ?? semester['ends_on']).toString(),
+      );
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+
+      if (today.isBefore(startsOn) || today.isAfter(endsOn)) {
+        throw const LessonFailure(
+          '현재 학기의 수업권만 변경할 수 있습니다.',
+        );
+      }
 
       return LessonBookingWindow(
-        startsOn: DateTime.parse(startsOn.toString()),
-        endsOn: DateTime.parse(endsOn.toString()),
+        startsOn: startsOn,
+        endsOn: endsOn,
       );
+    } on LessonFailure {
+      rethrow;
     } on PostgrestException catch (error) {
       throw LessonFailure(_friendlyMessage(error.message));
     } catch (_) {
@@ -193,6 +207,9 @@ class LessonRepository {
     }
     if (message.contains('FORESTRING_LESSON_NOT_FOUND')) {
       return '수업을 찾을 수 없습니다.';
+    }
+    if (message.contains('FORESTRING_STUDENT_SEMESTER_NOT_OPEN')) {
+      return '현재 학기의 수업권만 변경할 수 있습니다.';
     }
     if (message.contains('FORESTRING_BOOKING_DATE_OUTSIDE_USABLE_SEMESTER')) {
       return '이 수업권을 사용할 수 있는 기간을 벗어났습니다.';
