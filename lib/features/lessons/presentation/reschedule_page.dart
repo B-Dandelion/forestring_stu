@@ -90,7 +90,7 @@ class _ReschedulePageState extends State<ReschedulePage> {
         return;
       }
 
-      final selectedDate = _clampToWindow(DateTime.now(), window);
+      final selectedDate = _clampToWindow(lesson.startsAt, window);
       setState(() {
         _window = window;
         _selectedDate = selectedDate;
