@@ -18,8 +18,7 @@ class LessonController extends ChangeNotifier {
 
   List<Lesson> get canceledLessons => _lessons
       .where(
-        (lesson) =>
-            lesson.isCanceled && lesson.lessonRightId != null,
+        (lesson) => lesson.isCanceled && lesson.lessonRightId != null,
       )
       .toList();
 
@@ -57,6 +56,10 @@ class LessonController extends ChangeNotifier {
 
   List<Lesson> lessonsOn(DateTime date) {
     return _lessons.where((lesson) {
+      if (lesson.isCanceled) {
+        return false;
+      }
+
       final local = lesson.startsAt;
       return local.year == date.year &&
           local.month == date.month &&
