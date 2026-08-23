@@ -149,8 +149,8 @@ class LessonRightHistory {
   String get originLabel {
     return switch (origin) {
       'regular_base' => '정규 수강권',
-      'flex_base' => '자율 수강권',
-      'carryover' => '이월 수강권',
+      'flex_base' => '예약 수업권',
+      'carryover' => '보강 수업권',
       _ => '수강권',
     };
   }
