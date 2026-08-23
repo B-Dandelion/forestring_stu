@@ -78,7 +78,7 @@ class _LoginPageState extends State<LoginPage> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Image.asset(
-                      'assets/img/FORESTRING_Logo_bigcircle.png',
+                      'assets/img/로고_배경제거.png',
                       width: width * 0.73,
                       fit: BoxFit.contain,
                     ),
