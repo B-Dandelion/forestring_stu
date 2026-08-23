@@ -67,31 +67,6 @@ class SemesterLessonHistory {
       );
 }
 
-class HistoryActor {
-  const HistoryActor({
-    required this.id,
-    required this.displayName,
-    required this.role,
-  });
-
-  final String id;
-  final String displayName;
-  final String role;
-
-  String labelForStudent(String studentId) {
-    if (id == studentId) {
-      return '본인';
-    }
-
-    return switch (role) {
-      'master' => '$displayName 관리자',
-      'manager' => '$displayName 지점장',
-      'teacher' => '$displayName 선생님',
-      _ => displayName,
-    };
-  }
-}
-
 class LessonRightHistory {
   const LessonRightHistory({
     required this.id,
@@ -102,7 +77,6 @@ class LessonRightHistory {
     required this.cancellations,
     this.reservedAt,
     this.lesson,
-    this.rescheduledActor,
   });
 
   final String id;
@@ -113,7 +87,6 @@ class LessonRightHistory {
   final DateTime? reservedAt;
   final Lesson? lesson;
   final List<LessonCancellationHistory> cancellations;
-  final HistoryActor? rescheduledActor;
 
   int get cancellationCount => cancellations.length;
   int get studentCancellationCount =>
@@ -150,6 +123,14 @@ class LessonRightHistory {
   DateTime? get currentStartsAt => lesson?.startsAt;
   DateTime? get currentEndsAt => lesson?.endsAt;
 
+  String bookingActorLabel(String studentId) {
+    final actorId = lesson?.rescheduledBy;
+    if (actorId == null) {
+      return '';
+    }
+    return actorId == studentId ? '본인' : '학원 관리자';
+  }
+
   String get statusLabel {
     if (isRebooked) {
       return '재예약 완료';
@@ -181,19 +162,17 @@ class LessonCancellationHistory {
     required this.actorId,
     required this.canceledAt,
     required this.countsTowardLimit,
-    this.actor,
   });
 
   final String origin;
   final String actorId;
   final DateTime canceledAt;
   final bool countsTowardLimit;
-  final HistoryActor? actor;
 
   String actorLabel(String studentId) {
     if (actorId == studentId || origin == 'student') {
       return '본인';
     }
-    return actor?.labelForStudent(studentId) ?? '학원 관리자';
+    return '학원 관리자';
   }
 }
