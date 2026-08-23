@@ -40,12 +40,14 @@ class StudentDrawer extends StatelessWidget {
     required this.displayName,
     required this.onHome,
     required this.onReschedule,
+    required this.onMyPage,
     required this.onLogout,
   });
 
   final String displayName;
   final VoidCallback onHome;
   final VoidCallback onReschedule;
+  final VoidCallback onMyPage;
   final VoidCallback onLogout;
 
   @override
@@ -112,6 +114,18 @@ class StudentDrawer extends StatelessWidget {
               ),
               trailing: const Icon(Icons.navigate_next_rounded),
               onTap: onReschedule,
+            ),
+            ListTile(
+              leading: const Icon(
+                Icons.person_outline_rounded,
+                color: primaryColor,
+              ),
+              title: const Text(
+                '마이페이지',
+                style: forestringTextStyle,
+              ),
+              trailing: const Icon(Icons.navigate_next_rounded),
+              onTap: onMyPage,
             ),
             const Spacer(),
             const Divider(height: 1),
