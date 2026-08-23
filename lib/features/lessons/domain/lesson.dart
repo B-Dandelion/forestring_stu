@@ -44,6 +44,7 @@ class Lesson {
     this.lessonRightId,
     this.occurrenceAt,
     this.rescheduledBy,
+    this.updatedAt,
     this.teacherName,
   });
 
@@ -58,6 +59,7 @@ class Lesson {
   final String? lessonRightId;
   final DateTime? occurrenceAt;
   final String? rescheduledBy;
+  final DateTime? updatedAt;
   final String? teacherName;
 
   bool get isCanceled => status == LessonStatus.canceled;
@@ -68,22 +70,13 @@ class Lesson {
   bool get isAcademyChanged =>
       rescheduledBy != null && rescheduledBy != studentId;
 
-  bool get hasMovedFromOccurrence {
-    final original = occurrenceAt;
-    if (original == null) {
-      return false;
-    }
-    return original.toUtc().difference(startsAt.toUtc()).inMinutes != 0;
-  }
-
-  bool get isRescheduled =>
-      isStudentRebooked || isAcademyChanged || hasMovedFromOccurrence;
+  bool get isRescheduled => isStudentRebooked || isAcademyChanged;
 
   String get displayTypeLabel {
     if (isStudentRebooked) {
       return '재예약 수업';
     }
-    if (isAcademyChanged || hasMovedFromOccurrence) {
+    if (isAcademyChanged) {
       return '변경 수업';
     }
     return type.label;
@@ -93,7 +86,7 @@ class Lesson {
     if (isStudentRebooked) {
       return '재예약';
     }
-    if (isAcademyChanged || hasMovedFromOccurrence) {
+    if (isAcademyChanged) {
       return '변경';
     }
     return null;
@@ -112,6 +105,7 @@ class Lesson {
       lessonRightId: lessonRightId,
       occurrenceAt: occurrenceAt,
       rescheduledBy: rescheduledBy,
+      updatedAt: updatedAt,
       teacherName: name ?? teacherName,
     );
   }
@@ -119,6 +113,10 @@ class Lesson {
   factory Lesson.fromJson(Map<String, dynamic> json) {
     DateTime parseDate(dynamic value) {
       return DateTime.parse(value.toString()).toLocal();
+    }
+
+    DateTime? parseOptionalDate(dynamic value) {
+      return value == null ? null : parseDate(value);
     }
 
     return Lesson(
@@ -131,10 +129,9 @@ class Lesson {
       type: LessonType.fromValue(json['lesson_type'] as String),
       status: LessonStatus.fromValue(json['status'] as String),
       lessonRightId: json['lesson_right_id'] as String?,
-      occurrenceAt: json['occurrence_at'] == null
-          ? null
-          : parseDate(json['occurrence_at']),
+      occurrenceAt: parseOptionalDate(json['occurrence_at']),
       rescheduledBy: json['rescheduled_by'] as String?,
+      updatedAt: parseOptionalDate(json['updated_at']),
     );
   }
 }
