@@ -240,7 +240,7 @@ Future<void> showStudentMakeupDialog({
                       ),
                     )
                   else if (options.isEmpty)
-                    Text(
+                    const Text(
                       '예약 가능한 시간이 없습니다.',
                       style: forestringTextStyle,
                     )
