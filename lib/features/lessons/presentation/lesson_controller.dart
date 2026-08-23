@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../data/lesson_repository.dart';
 import '../domain/lesson.dart';
+import '../domain/lesson_history.dart';
 
 class LessonController extends ChangeNotifier {
   LessonController(this._repository);
@@ -52,6 +53,10 @@ class LessonController extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  Future<LessonHistoryData> fetchLessonHistory() {
+    return _repository.fetchMyLessonHistory();
   }
 
   List<Lesson> lessonsOn(DateTime date) {
