@@ -9,6 +9,7 @@ import '../../auth/domain/current_profile.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../domain/lesson.dart';
 import 'lesson_controller.dart';
+import 'student_my_page.dart';
 
 class ReschedulePage extends StatefulWidget {
   const ReschedulePage({
@@ -250,6 +251,17 @@ class _ReschedulePageState extends State<ReschedulePage> {
           Navigator.of(context).maybePop();
         },
         onReschedule: () => Navigator.of(context).pop(),
+        onMyPage: () {
+          Navigator.of(context).pop();
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => ChangeNotifierProvider.value(
+                value: context.read<LessonController>(),
+                child: StudentMyPage(profile: widget.profile),
+              ),
+            ),
+          );
+        },
         onLogout: () async {
           Navigator.of(context).pop();
           await context.read<AuthController>().signOut();
