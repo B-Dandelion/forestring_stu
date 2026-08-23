@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -17,168 +18,227 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final _nameController = TextEditingController();
   final _pinController = TextEditingController();
+  bool _autoLogin = false;
+
+  bool get _canLogin =>
+      _nameController.text.trim().isNotEmpty &&
+      _pinController.text.length == 4;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController.addListener(_refresh);
+    _pinController.addListener(_refresh);
+  }
 
   @override
   void dispose() {
-    _nameController.dispose();
-    _pinController.dispose();
+    _nameController
+      ..removeListener(_refresh)
+      ..dispose();
+    _pinController
+      ..removeListener(_refresh)
+      ..dispose();
     super.dispose();
   }
 
+  void _refresh() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
   Future<void> _login() async {
+    if (!_canLogin) {
+      return;
+    }
+
     FocusManager.instance.primaryFocus?.unfocus();
     await context.read<AuthController>().signIn(
           name: _nameController.text,
           pin: _pinController.text,
+          rememberSession: _autoLogin,
         );
   }
 
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthController>();
+    final width = MediaQuery.sizeOf(context).width;
 
     return Scaffold(
       backgroundColor: primaryColor,
       body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 28,
-            ),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 460),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Image.asset(
-                    'assets/img/FORESTRING_Logo.png',
-                    height: 250,
-                    fit: BoxFit.contain,
-                  ),
-                  const Text(
-                    '포레스트링 수강생용',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontFamily: 'ELAND',
-                      fontWeight: FontWeight.w300,
-                      color: Colors.white,
-                      fontSize: 17,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Column(
+            children: [
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Image.asset(
+                      'assets/img/FORESTRING_Logo_bigcircle.png',
+                      width: width * 0.73,
+                      fit: BoxFit.contain,
                     ),
-                  ),
-                  const SizedBox(height: 24),
-                  TextField(
-                    controller: _nameController,
-                    textInputAction: TextInputAction.next,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontFamily: 'ELAND',
-                    ),
-                    decoration: InputDecoration(
-                      filled: true,
-                      fillColor: secondaryColor,
-                      labelText: '이름',
-                      labelStyle: const TextStyle(
-                        color: Colors.white,
-                        fontFamily: 'ELAND',
-                      ),
-                      enabledBorder: const OutlineInputBorder(
-                        borderSide: BorderSide(color: Colors.white),
-                      ),
-                      focusedBorder: const OutlineInputBorder(
-                        borderSide: BorderSide(
-                          color: Colors.white,
-                          width: 1.5,
-                        ),
-                      ),
-                      suffixIcon: IconButton(
-                        onPressed: _nameController.clear,
-                        icon: const Icon(Icons.close),
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: _pinController,
-                    keyboardType: TextInputType.number,
-                    obscureText: true,
-                    maxLength: 4,
-                    textInputAction: TextInputAction.done,
-                    inputFormatters: [
-                      FilteringTextInputFormatter.digitsOnly,
-                      LengthLimitingTextInputFormatter(4),
-                    ],
-                    onSubmitted: (_) => _login(),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontFamily: 'ELAND',
-                    ),
-                    decoration: InputDecoration(
-                      counterText: '',
-                      filled: true,
-                      fillColor: secondaryColor,
-                      labelText: '4자리 PIN',
-                      labelStyle: const TextStyle(
-                        color: Colors.white,
-                        fontFamily: 'ELAND',
-                      ),
-                      enabledBorder: const OutlineInputBorder(
-                        borderSide: BorderSide(color: Colors.white),
-                      ),
-                      focusedBorder: const OutlineInputBorder(
-                        borderSide: BorderSide(
-                          color: Colors.white,
-                          width: 1.5,
-                        ),
-                      ),
-                      suffixIcon: IconButton(
-                        onPressed: _pinController.clear,
-                        icon: const Icon(Icons.close),
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                  if (auth.errorMessage != null) ...[
-                    const SizedBox(height: 10),
-                    Text(
-                      auth.errorMessage!,
+                    const SizedBox(height: 20),
+                    const Text(
+                      '포레스트링 수강생',
                       textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
                         fontFamily: 'ELAND',
-                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.white,
+                        fontSize: 22,
                       ),
                     ),
                   ],
-                  const SizedBox(height: 14),
-                  SizedBox(
-                    height: 50,
-                    child: ElevatedButton(
-                      onPressed: auth.isLoading ? null : _login,
-                      child: auth.isLoading
-                          ? const SizedBox(
-                              width: 22,
-                              height: 22,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: primaryColor,
-                              ),
-                            )
-                          : const Text(
-                              '로그인',
-                              style: TextStyle(
-                                color: primaryColor,
-                                fontFamily: 'ELAND',
-                                fontWeight: FontWeight.w500,
-                                fontSize: 20,
-                              ),
-                            ),
+                ),
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  const Text(
+                    '자동 로그인',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontFamily: 'ELAND',
+                      fontWeight: FontWeight.w300,
+                      fontSize: 13,
                     ),
+                  ),
+                  CupertinoSwitch(
+                    value: _autoLogin,
+                    inactiveTrackColor: Colors.white60,
+                    activeTrackColor: const Color(0xff3E6F58),
+                    onChanged: auth.isLoading
+                        ? null
+                        : (value) {
+                            setState(() {
+                              _autoLogin = value;
+                            });
+                          },
                   ),
                 ],
               ),
-            ),
+              const SizedBox(height: 15),
+              TextField(
+                controller: _nameController,
+                textInputAction: TextInputAction.next,
+                style: const TextStyle(
+                  fontFamily: 'ELAND',
+                  fontWeight: FontWeight.w300,
+                  color: Colors.white,
+                ),
+                decoration: const InputDecoration(
+                  labelText: '아이디',
+                  labelStyle: TextStyle(
+                    fontFamily: 'ELAND',
+                    fontWeight: FontWeight.w300,
+                    color: Colors.white,
+                  ),
+                  enabledBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(
+                      color: Colors.white,
+                      width: 1.5,
+                    ),
+                  ),
+                  focusedBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(
+                      color: Colors.white,
+                      width: 2,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 15),
+              TextField(
+                controller: _pinController,
+                keyboardType: TextInputType.number,
+                obscureText: true,
+                maxLength: 4,
+                textInputAction: TextInputAction.done,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(4),
+                ],
+                onSubmitted: (_) => _login(),
+                style: const TextStyle(
+                  fontFamily: 'ELAND',
+                  fontWeight: FontWeight.w300,
+                  color: Colors.white,
+                ),
+                decoration: const InputDecoration(
+                  counterText: '',
+                  labelText: '비밀번호',
+                  labelStyle: TextStyle(
+                    fontFamily: 'ELAND',
+                    fontWeight: FontWeight.w300,
+                    color: Colors.white,
+                  ),
+                  enabledBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(
+                      color: Colors.white,
+                      width: 1.5,
+                    ),
+                  ),
+                  focusedBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(
+                      color: Colors.white,
+                      width: 2,
+                    ),
+                  ),
+                ),
+              ),
+              if (auth.errorMessage != null) ...[
+                const SizedBox(height: 10),
+                Text(
+                  auth.errorMessage!,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontFamily: 'ELAND',
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                height: 44,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    elevation: 0,
+                    backgroundColor: _canLogin ? Colors.white : Colors.grey,
+                    disabledBackgroundColor: Colors.grey,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  onPressed: auth.isLoading || !_canLogin ? null : _login,
+                  child: auth.isLoading
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: primaryColor,
+                          ),
+                        )
+                      : const Text(
+                          '로그인',
+                          style: TextStyle(
+                            color: primaryColor,
+                            fontFamily: 'ELAND',
+                            fontWeight: FontWeight.w500,
+                            fontSize: 20,
+                          ),
+                        ),
+                ),
+              ),
+              const SizedBox(height: 30),
+            ],
           ),
         ),
       ),
