@@ -10,6 +10,7 @@ import '../../auth/presentation/auth_controller.dart';
 import '../domain/lesson.dart';
 import 'lesson_controller.dart';
 import 'reschedule_page.dart';
+import 'student_my_page.dart';
 import 'widgets/lesson_action_dialog.dart';
 import 'widgets/lesson_card.dart';
 
@@ -51,6 +52,17 @@ class _StudentHomePageState extends State<StudentHomePage> {
                 child: ReschedulePage(
                   profile: widget.profile,
                 ),
+              ),
+            ),
+          );
+        },
+        onMyPage: () {
+          Navigator.of(context).pop();
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => ChangeNotifierProvider.value(
+                value: context.read<LessonController>(),
+                child: StudentMyPage(profile: widget.profile),
               ),
             ),
           );
