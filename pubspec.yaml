@@ -13,6 +13,7 @@ dependencies:
   table_calendar: ^3.1.2
   intl: any
   provider: ^6.0.5
+  shared_preferences: ^2.3.2
   supabase_flutter: ^2.15.4
 
 dev_dependencies:
@@ -27,17 +28,17 @@ flutter:
   fonts:
     - family: ELAND
       fonts:
-        - asset: assets\fonts\ELAND_초이스OTF-B.otf
+        - asset: assets\\fonts\\ELAND_초이스OTF-B.otf
           weight: 700
-        - asset: assets\fonts\ELAND_초이스OTF-L.otf
+        - asset: assets\\fonts\\ELAND_초이스OTF-L.otf
           weight: 300
-        - asset: assets\fonts\ELAND_초이스OTF-M.otf
+        - asset: assets\\fonts\\ELAND_초이스OTF-M.otf
           weight: 500
     - family: OpenSans
       fonts:
-        - asset: assets\fonts\OpenSans-Bold.ttf
+        - asset: assets\\fonts\\OpenSans-Bold.ttf
           weight: 700
-        - asset: assets\fonts\OpenSans-Light.ttf
+        - asset: assets\\fonts\\OpenSans-Light.ttf
           weight: 300
-        - asset: assets\fonts\OpenSans-Medium.ttf
+        - asset: assets\\fonts\\OpenSans-Medium.ttf
           weight: 500
