@@ -76,7 +76,7 @@ class StudentLessonCard extends StatelessWidget {
                     Text(
                       '${DateFormat('HH:mm').format(lesson.startsAt)} '
                       '~ ${DateFormat('HH:mm').format(lesson.endsAt)} '
-                      '· ${lesson.type.label}',
+                      '· ${lesson.displayTypeLabel}',
                       style: forestringTextStyle.copyWith(
                         fontSize: 13,
                         color: Colors.black54,
@@ -95,7 +95,7 @@ class StudentLessonCard extends StatelessWidget {
                 )
               else if (lesson.isRescheduled)
                 Text(
-                  '변경',
+                  '재예약',
                   style: forestringTextStyle.copyWith(
                     color: secondaryColor,
                     fontWeight: FontWeight.w500,
