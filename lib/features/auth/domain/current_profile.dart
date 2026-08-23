@@ -21,6 +21,7 @@ class CurrentProfile {
     required this.displayName,
     required this.role,
     required this.isActive,
+    required this.isReviewAccount,
     this.branchId,
   });
 
@@ -28,6 +29,7 @@ class CurrentProfile {
   final String displayName;
   final AppRole role;
   final bool isActive;
+  final bool isReviewAccount;
   final String? branchId;
 
   factory CurrentProfile.fromJson(Map<String, dynamic> json) {
@@ -36,6 +38,7 @@ class CurrentProfile {
       displayName: json['display_name'] as String,
       role: AppRole.fromValue(json['role'] as String),
       isActive: json['is_active'] as bool,
+      isReviewAccount: json['is_review_account'] == true,
       branchId: json['branch_id'] as String?,
     );
   }
