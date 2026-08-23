@@ -80,6 +80,34 @@ class LessonRepository {
     }
   }
 
+  Future<LessonBookingWindow> getBookingWindow({
+    required String rightId,
+  }) async {
+    try {
+      final right = await _client
+          .from('lesson_rights')
+          .select('usable_semester_id')
+          .eq('id', rightId)
+          .single();
+
+      final semesterId = right['usable_semester_id'] as String;
+      final semester = await _client
+          .from('semesters')
+          .select('starts_on, ends_on')
+          .eq('id', semesterId)
+          .single();
+
+      return LessonBookingWindow(
+        startsOn: DateTime.parse(semester['starts_on'].toString()),
+        endsOn: DateTime.parse(semester['ends_on'].toString()),
+      );
+    } on PostgrestException catch (error) {
+      throw LessonFailure(_friendlyMessage(error.message));
+    } catch (_) {
+      throw const LessonFailure('예약 가능한 기간을 확인하지 못했습니다.');
+    }
+  }
+
   Future<List<LessonBookingOption>> getBookingOptions({
     required String rightId,
     required DateTime selectedDate,
@@ -155,13 +183,26 @@ class LessonRepository {
     if (message.contains('FORESTRING_LESSON_NOT_FOUND')) {
       return '수업을 찾을 수 없습니다.';
     }
+    if (message.contains('FORESTRING_BOOKING_DATE_OUTSIDE_USABLE_SEMESTER')) {
+      return '이 수업권을 사용할 수 있는 기간을 벗어났습니다.';
+    }
+    if (message.contains('FORESTRING_TEACHER_ASSIGNMENT_REQUIRED')) {
+      return '선택한 날짜에는 예약 가능한 담당 선생님이 없습니다.';
+    }
+    if (message.contains('FORESTRING_BOOKING_SLOT_NOT_AVAILABLE') ||
+        message.contains('FORESTRING_BOOKING_SLOT_TAKEN')) {
+      return '선택한 시간이 더 이상 예약 가능하지 않습니다.';
+    }
+    if (message.contains('FORESTRING_LESSON_RIGHT_NOT_AVAILABLE')) {
+      return '이미 사용되었거나 예약할 수 없는 수업권입니다.';
+    }
     if (message.contains('FORESTRING_CANCEL') ||
         message.contains('QUOTA') ||
         message.contains('CANCELLATION')) {
       return '현재 정책상 이 수업을 취소할 수 없습니다.';
     }
     if (message.contains('FORESTRING_')) {
-      return '요청을 처리할 수 없습니다. ($message)';
+      return '요청을 처리할 수 없습니다.';
     }
     return '요청 처리 중 오류가 발생했습니다.';
   }
