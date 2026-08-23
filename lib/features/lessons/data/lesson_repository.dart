@@ -49,12 +49,12 @@ class LessonRepository {
           )
           .toList();
 
-      final actors = await _fetchVisibleActors();
+      final teacherNames = await _fetchVisibleTeacherNames();
 
       return lessons
           .map(
             (lesson) => lesson.copyWithTeacherName(
-              actors[lesson.teacherId]?.displayName,
+              teacherNames[lesson.teacherId],
             ),
           )
           .toList();
@@ -129,7 +129,7 @@ class LessonRepository {
         overrideRows = const [];
       }
 
-      final actors = await _fetchVisibleActors();
+      final teacherNames = await _fetchVisibleTeacherNames();
 
       final lessonsByRight = <String, Lesson>{};
       for (final raw in lessonsRows as List) {
@@ -140,7 +140,7 @@ class LessonRepository {
         }
         final lesson = Lesson.fromJson(row);
         lessonsByRight[rightId] = lesson.copyWithTeacherName(
-          actors[lesson.teacherId]?.displayName,
+          teacherNames[lesson.teacherId],
         );
       }
 
@@ -155,7 +155,6 @@ class LessonRepository {
               LessonCancellationHistory(
                 origin: row['origin'].toString(),
                 actorId: actorId,
-                actor: actors[actorId],
                 canceledAt: DateTime.parse(
                   canceledAtValue.toString(),
                 ).toLocal(),
@@ -182,8 +181,6 @@ class LessonRepository {
         final row = Map<String, dynamic>.from(raw as Map);
         final rightId = row['id'] as String;
         final semesterId = row['usable_semester_id'] as String;
-        final lesson = lessonsByRight[rightId];
-        final rescheduledBy = lesson?.rescheduledBy;
 
         branchBySemester[semesterId] = row['branch_id'] as String;
 
@@ -197,9 +194,7 @@ class LessonRepository {
                 reservedAt: row['reserved_at'] == null
                     ? null
                     : DateTime.parse(row['reserved_at'].toString()).toLocal(),
-                lesson: lesson,
-                rescheduledActor:
-                    rescheduledBy == null ? null : actors[rescheduledBy],
+                lesson: lessonsByRight[rightId],
                 cancellations: cancellationsByRight[rightId] ?? const [],
               ),
             );
@@ -363,19 +358,16 @@ class LessonRepository {
     }
   }
 
-  Future<Map<String, HistoryActor>> _fetchVisibleActors() async {
+  Future<Map<String, String>> _fetchVisibleTeacherNames() async {
     try {
       final rows = await _client
           .from('profiles')
-          .select('id, display_name, role');
+          .select('id, display_name, role')
+          .eq('role', 'teacher');
 
       return {
         for (final raw in rows as List)
-          (raw as Map)['id'] as String: HistoryActor(
-            id: raw['id'] as String,
-            displayName: raw['display_name'] as String,
-            role: raw['role'].toString(),
-          ),
+          (raw as Map)['id'] as String: raw['display_name'] as String,
       };
     } on PostgrestException {
       return const {};
