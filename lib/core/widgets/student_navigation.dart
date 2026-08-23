@@ -94,7 +94,7 @@ class StudentDrawer extends StatelessWidget {
                 Icons.home_filled,
                 color: primaryColor,
               ),
-              title: Text(
+              title: const Text(
                 '메인페이지',
                 style: forestringTextStyle,
               ),
@@ -106,7 +106,7 @@ class StudentDrawer extends StatelessWidget {
                 Icons.calendar_month_rounded,
                 color: primaryColor,
               ),
-              title: Text(
+              title: const Text(
                 '예약 변경하기',
                 style: forestringTextStyle,
               ),
