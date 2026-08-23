@@ -12,12 +12,14 @@ class ReviewLessonRepository extends LessonRepository {
   final String studentId;
 
   static const _teacherId = 'review-teacher';
-  static const _teacherName = 'Demo Teacher';
+  static const _teacherName = '박지은';
 
   final List<Lesson> _lessons = [];
   final Map<String, DateTime> _originalStartsByRight = {};
   final Map<String, DateTime?> _canceledAtByRight = {};
   final Map<String, DateTime?> _reservedAtByRight = {};
+  final Map<String, String> _semesterIdByRight = {};
+  final List<_ReviewSemester> _semesters = [];
 
   DateTime _atTime(DateTime date, int hour, [int minute = 0]) {
     return DateTime(date.year, date.month, date.day, hour, minute);
@@ -27,41 +29,69 @@ class ReviewLessonRepository extends LessonRepository {
     return DateTime(value.year, value.month, value.day);
   }
 
+  String _monthCode(DateTime date) {
+    return '${date.year}-${date.month.toString().padLeft(2, '0')}';
+  }
+
   void _seedDemoData() {
     if (_lessons.isNotEmpty) {
       return;
     }
 
-    final today = _dateOnly(DateTime.now());
-    final offsets = [2, 5, 9, 12];
+    final now = DateTime.now();
+    var semesterStart = DateTime(now.year, now.month, 16);
+    if (now.isBefore(semesterStart)) {
+      semesterStart = DateTime(now.year, now.month - 1, 16);
+    }
 
-    for (var i = 0; i < offsets.length; i++) {
-      final start = _atTime(
-        today.add(Duration(days: offsets[i])),
-        10,
-      );
-      final rightId = 'review-right-${i + 1}';
-      final lessonId = 'review-lesson-${i + 1}';
+    const lessonOffsets = [9, 12, 16, 19];
+    var lessonSequence = 1;
 
-      _originalStartsByRight[rightId] = start;
-      _reservedAtByRight[rightId] = DateTime.now();
-      _canceledAtByRight[rightId] = null;
+    for (var semesterIndex = 0; semesterIndex < 4; semesterIndex++) {
+      final start = semesterStart.add(Duration(days: semesterIndex * 35));
+      final end = start.add(const Duration(days: 35));
+      final semesterId = 'review-semester-${semesterIndex + 1}';
 
-      _lessons.add(
-        Lesson(
-          id: lessonId,
-          studentId: studentId,
-          teacherId: _teacherId,
-          startsAt: start,
-          endsAt: start.add(const Duration(minutes: 30)),
-          durationMinutes: 30,
-          type: LessonType.regular,
-          status: LessonStatus.scheduled,
-          lessonRightId: rightId,
-          occurrenceAt: start,
-          teacherName: _teacherName,
+      _semesters.add(
+        _ReviewSemester(
+          id: semesterId,
+          code: _monthCode(start),
+          startsOn: start,
+          endsOn: end,
         ),
       );
+
+      for (var i = 0; i < lessonOffsets.length; i++) {
+        final startAt = _atTime(
+          start.add(Duration(days: lessonOffsets[i])),
+          10,
+        );
+        final rightId = 'review-right-$lessonSequence';
+        final lessonId = 'review-lesson-$lessonSequence';
+
+        _originalStartsByRight[rightId] = startAt;
+        _reservedAtByRight[rightId] = now;
+        _canceledAtByRight[rightId] = null;
+        _semesterIdByRight[rightId] = semesterId;
+
+        _lessons.add(
+          Lesson(
+            id: lessonId,
+            studentId: studentId,
+            teacherId: _teacherId,
+            startsAt: startAt,
+            endsAt: startAt.add(const Duration(minutes: 30)),
+            durationMinutes: 30,
+            type: LessonType.regular,
+            status: LessonStatus.scheduled,
+            lessonRightId: rightId,
+            occurrenceAt: startAt,
+            teacherName: _teacherName,
+          ),
+        );
+
+        lessonSequence++;
+      }
     }
   }
 
@@ -125,14 +155,18 @@ class ReviewLessonRepository extends LessonRepository {
   Future<LessonBookingWindow> getBookingWindow({
     required String rightId,
   }) async {
-    if (!_originalStartsByRight.containsKey(rightId)) {
+    final semesterId = _semesterIdByRight[rightId];
+    if (semesterId == null) {
       throw const LessonFailure('수업권을 찾을 수 없습니다.');
     }
 
-    final today = _dateOnly(DateTime.now());
+    final semester = _semesters.firstWhere(
+      (item) => item.id == semesterId,
+    );
+
     return LessonBookingWindow(
-      startsOn: today,
-      endsOn: today.add(const Duration(days: 28)),
+      startsOn: semester.startsOn,
+      endsOn: semester.endsOn,
     );
   }
 
@@ -222,55 +256,76 @@ class ReviewLessonRepository extends LessonRepository {
 
   @override
   Future<LessonHistoryData> fetchMyLessonHistory() async {
-    final now = DateTime.now();
-    final today = _dateOnly(now);
-    final startsOn = today.subtract(const Duration(days: 7));
-    final endsOn = today.add(const Duration(days: 28));
-    final monthCode =
-        '${now.year}-${now.month.toString().padLeft(2, '0')}';
+    final semesterHistories = <SemesterLessonHistory>[];
 
-    final rights = <LessonRightHistory>[];
-    for (var i = 0; i < _lessons.length; i++) {
-      final lesson = _lessons[i];
-      final rightId = lesson.lessonRightId!;
-      final canceledAt = _canceledAtByRight[rightId];
-      final cancellations = canceledAt == null
-          ? const <LessonCancellationHistory>[]
-          : <LessonCancellationHistory>[
-              LessonCancellationHistory(
-                origin: 'student',
-                actorId: studentId,
-                canceledAt: canceledAt,
-                countsTowardLimit: true,
-              ),
-            ];
+    for (final semester in _semesters) {
+      final lessons = _lessons.where((lesson) {
+        final rightId = lesson.lessonRightId;
+        return rightId != null && _semesterIdByRight[rightId] == semester.id;
+      }).toList()
+        ..sort((a, b) => a.startsAt.compareTo(b.startsAt));
 
-      rights.add(
-        LessonRightHistory(
-          id: rightId,
-          origin: 'regular_base',
-          status: lesson.isCanceled ? 'available' : 'reserved',
-          sequenceNo: i + 1,
-          durationMinutes: lesson.durationMinutes,
-          reservedAt: _reservedAtByRight[rightId],
-          lesson: lesson,
-          cancellations: cancellations,
+      final rights = <LessonRightHistory>[];
+      for (var i = 0; i < lessons.length; i++) {
+        final lesson = lessons[i];
+        final rightId = lesson.lessonRightId!;
+        final canceledAt = _canceledAtByRight[rightId];
+        final cancellations = canceledAt == null
+            ? const <LessonCancellationHistory>[]
+            : <LessonCancellationHistory>[
+                LessonCancellationHistory(
+                  origin: 'student',
+                  actorId: studentId,
+                  canceledAt: canceledAt,
+                  countsTowardLimit: true,
+                ),
+              ];
+
+        rights.add(
+          LessonRightHistory(
+            id: rightId,
+            origin: 'regular_base',
+            status: lesson.isCanceled ? 'available' : 'reserved',
+            sequenceNo: i + 1,
+            durationMinutes: lesson.durationMinutes,
+            reservedAt: _reservedAtByRight[rightId],
+            lesson: lesson,
+            cancellations: cancellations,
+          ),
+        );
+      }
+
+      semesterHistories.add(
+        SemesterLessonHistory(
+          id: semester.id,
+          code: semester.code,
+          startsOn: semester.startsOn,
+          endsOn: semester.endsOn,
+          rights: rights,
         ),
       );
     }
 
+    semesterHistories.sort((a, b) => b.startsOn.compareTo(a.startsOn));
+
     return LessonHistoryData(
       studentId: studentId,
       studentType: 'regular',
-      semesters: [
-        SemesterLessonHistory(
-          id: 'review-semester',
-          code: monthCode,
-          startsOn: startsOn,
-          endsOn: endsOn,
-          rights: rights,
-        ),
-      ],
+      semesters: semesterHistories,
     );
   }
+}
+
+class _ReviewSemester {
+  const _ReviewSemester({
+    required this.id,
+    required this.code,
+    required this.startsOn,
+    required this.endsOn,
+  });
+
+  final String id;
+  final String code;
+  final DateTime startsOn;
+  final DateTime endsOn;
 }
