@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../features/auth/presentation/auth_controller.dart';
 import '../features/auth/presentation/login_page.dart';
 import '../features/lessons/data/lesson_repository.dart';
+import '../features/lessons/data/review_lesson_repository.dart';
 import '../features/lessons/presentation/lesson_controller.dart';
 import '../features/lessons/presentation/student_home_page.dart';
 
@@ -28,10 +29,12 @@ class AppGate extends StatelessWidget {
       return const LoginPage();
     }
 
+    final LessonRepository repository = profile.isReviewAccount
+        ? ReviewLessonRepository(studentId: profile.id)
+        : LessonRepository();
+
     return ChangeNotifierProvider(
-      create: (_) => LessonController(
-        LessonRepository(),
-      )..initialize(),
+      create: (_) => LessonController(repository)..initialize(),
       child: StudentHomePage(
         profile: profile,
       ),
