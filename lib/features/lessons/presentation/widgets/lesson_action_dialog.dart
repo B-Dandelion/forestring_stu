@@ -10,8 +10,10 @@ Future<void> showStudentLessonDialog({
   required Lesson lesson,
   required LessonController controller,
 }) async {
+  final hostContext = context;
+
   await showDialog<void>(
-    context: context,
+    context: hostContext,
     builder: (dialogContext) {
       return AlertDialog(
         title: Text(
@@ -55,19 +57,21 @@ Future<void> showStudentLessonDialog({
             TextButton(
               onPressed: () async {
                 final confirmed = await showDialog<bool>(
-                      context: context,
-                      builder: (context) => AlertDialog(
+                      context: dialogContext,
+                      builder: (confirmContext) => AlertDialog(
                         title: const Text('수업 취소'),
                         content: const Text(
                           '이 수업을 취소하시겠습니까?\n취소 가능 횟수와 보강 정책은 자동으로 적용됩니다.',
                         ),
                         actions: [
                           TextButton(
-                            onPressed: () => Navigator.pop(context, false),
+                            onPressed: () =>
+                                Navigator.pop(confirmContext, false),
                             child: const Text('아니요'),
                           ),
                           TextButton(
-                            onPressed: () => Navigator.pop(context, true),
+                            onPressed: () =>
+                                Navigator.pop(confirmContext, true),
                             child: const Text(
                               '취소하기',
                               style: TextStyle(color: Colors.redAccent),
@@ -78,21 +82,23 @@ Future<void> showStudentLessonDialog({
                     ) ??
                     false;
 
-                if (!confirmed || !context.mounted) {
+                if (!confirmed || !dialogContext.mounted) {
                   return;
                 }
 
                 final ok = await controller.cancelLesson(lesson);
-                if (!context.mounted) {
+                if (!dialogContext.mounted) {
                   return;
                 }
 
                 if (ok) {
                   Navigator.of(dialogContext).pop();
-                  _showMessage(context, '수업이 취소되었습니다.');
-                } else {
+                  if (hostContext.mounted) {
+                    _showMessage(hostContext, '수업이 취소되었습니다.');
+                  }
+                } else if (hostContext.mounted) {
                   _showMessage(
-                    context,
+                    hostContext,
                     controller.errorMessage ?? '수업을 취소하지 못했습니다.',
                   );
                 }
@@ -106,11 +112,13 @@ Future<void> showStudentLessonDialog({
             FilledButton(
               onPressed: () async {
                 Navigator.of(dialogContext).pop();
-                await showStudentMakeupDialog(
-                  context: context,
-                  lesson: lesson,
-                  controller: controller,
-                );
+                if (hostContext.mounted) {
+                  await showStudentMakeupDialog(
+                    context: hostContext,
+                    lesson: lesson,
+                    controller: controller,
+                  );
+                }
               },
               child: const Text('보강 예약'),
             ),
@@ -129,7 +137,8 @@ Future<void> showStudentMakeupDialog({
   required Lesson lesson,
   required LessonController controller,
 }) async {
-  var selectedDate = DateTime.now();
+  final hostContext = context;
+  var selectedDate = lesson.startsAt;
   var options = <LessonBookingOption>[];
   var isLoading = true;
   String? errorMessage;
@@ -160,12 +169,12 @@ Future<void> showStudentMakeupDialog({
   }
 
   await showDialog<void>(
-    context: context,
+    context: hostContext,
     builder: (dialogContext) {
       var firstBuild = true;
 
       return StatefulBuilder(
-        builder: (context, setState) {
+        builder: (dialogBodyContext, setState) {
           if (firstBuild) {
             firstBuild = false;
             Future.microtask(() => loadOptions(setState));
@@ -197,7 +206,7 @@ Future<void> showStudentMakeupDialog({
                       IconButton(
                         onPressed: () async {
                           final picked = await showDatePicker(
-                            context: context,
+                            context: dialogBodyContext,
                             initialDate: selectedDate,
                             firstDate: DateTime.now().subtract(
                               const Duration(days: 1),
@@ -259,19 +268,22 @@ Future<void> showStudentMakeupDialog({
                                 lesson: lesson,
                                 option: option,
                               );
-                              if (!context.mounted) {
+
+                              if (!dialogBodyContext.mounted) {
                                 return;
                               }
 
                               if (ok) {
                                 Navigator.of(dialogContext).pop();
+                                if (hostContext.mounted) {
+                                  _showMessage(
+                                    hostContext,
+                                    '보강 수업이 예약되었습니다.',
+                                  );
+                                }
+                              } else if (hostContext.mounted) {
                                 _showMessage(
-                                  context,
-                                  '보강 수업이 예약되었습니다.',
-                                );
-                              } else {
-                                _showMessage(
-                                  context,
+                                  hostContext,
                                   controller.errorMessage ??
                                       '보강 수업을 예약하지 못했습니다.',
                                 );
