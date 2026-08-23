@@ -42,6 +42,7 @@ class Lesson {
     required this.status,
     this.lessonRightId,
     this.occurrenceAt,
+    this.rescheduledBy,
     this.teacherName,
   });
 
@@ -54,16 +55,28 @@ class Lesson {
   final LessonStatus status;
   final String? lessonRightId;
   final DateTime? occurrenceAt;
+  final String? rescheduledBy;
   final String? teacherName;
 
   bool get isCanceled => status == LessonStatus.canceled;
 
   bool get isRescheduled {
+    if (rescheduledBy != null) {
+      return true;
+    }
+
     final original = occurrenceAt;
     if (original == null) {
       return false;
     }
     return original.toUtc().difference(startsAt.toUtc()).inMinutes != 0;
+  }
+
+  String get displayTypeLabel {
+    if (isRescheduled) {
+      return '재예약 수업';
+    }
+    return type.label;
   }
 
   Lesson copyWithTeacherName(String? name) {
@@ -77,6 +90,7 @@ class Lesson {
       status: status,
       lessonRightId: lessonRightId,
       occurrenceAt: occurrenceAt,
+      rescheduledBy: rescheduledBy,
       teacherName: name ?? teacherName,
     );
   }
@@ -98,6 +112,7 @@ class Lesson {
       occurrenceAt: json['occurrence_at'] == null
           ? null
           : parseDate(json['occurrence_at']),
+      rescheduledBy: json['rescheduled_by'] as String?,
     );
   }
 }
