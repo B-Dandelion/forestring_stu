@@ -172,30 +172,62 @@ class _StudentMyPageState extends State<StudentMyPage> {
     LessonHistoryData history,
     SemesterLessonHistory semester,
   ) {
-    final baseCount = semester.rights
+    final baseRights = semester.rights
         .where(
           (right) => history.isRegular
               ? right.origin == 'regular_base'
               : right.origin == 'flex_base',
         )
-        .length;
+        .toList();
+    final baseCount = baseRights.length;
     final carryoverCount = semester.rights
         .where((right) => right.origin == 'carryover')
+        .length;
+    final countedStudentCancellations = baseRights.fold<int>(
+      0,
+      (sum, right) =>
+          sum +
+          right.cancellations
+              .where(
+                (event) =>
+                    event.origin == 'student' && event.countsTowardLimit,
+              )
+              .length,
+    );
+    final cancellationLimit = history.isRegular
+        ? (baseCount ~/ 4) * 2
+        : baseCount ~/ 4;
+    final remainingCancellations =
+        cancellationLimit > countedStudentCancellations
+            ? cancellationLimit - countedStudentCancellations
+            : 0;
+    final rebookableCount = baseRights
+        .where(
+          (right) => right.status == 'available' && right.wasCanceled,
+        )
+        .length;
+    final flexAvailableCount = baseRights
+        .where(
+          (right) => right.status == 'available' && !right.wasCanceled,
+        )
         .length;
 
     final chips = history.isRegular
         ? <String>[
-            '기본 생성 수업 $baseCount개',
-            '예약 ${semester.reservedRights}개',
-            if (semester.availableRights > 0)
-              '재예약 가능 ${semester.availableRights}개',
-            if (carryoverCount > 0) '이월 수강권 $carryoverCount개',
+            '예약된 수업 ${semester.reservedRights}개',
+            '취소 가능 $remainingCancellations회',
+            '보강 수업권 ${carryoverCount == 0 ? '없음' : '$carryoverCount개'}',
+            if (rebookableCount > 0)
+              '재예약 가능 수업권 $rebookableCount개',
           ]
         : <String>[
-            '기본 수강권 $baseCount개',
-            '남은 수강권 ${semester.availableRights}개',
-            '예약/사용 ${semester.reservedRights + semester.consumedRights}개',
-            if (carryoverCount > 0) '이월 수강권 $carryoverCount개',
+            '기본 수업권 $baseCount개',
+            '예약 가능 수업권 $flexAvailableCount개',
+            '예약된 수업 ${semester.reservedRights}개',
+            '취소 가능 $remainingCancellations회',
+            '보강 수업권 ${carryoverCount == 0 ? '없음' : '$carryoverCount개'}',
+            if (rebookableCount > 0)
+              '재예약 가능 수업권 $rebookableCount개',
           ];
 
     return Container(
