@@ -49,7 +49,9 @@ class LessonRepository {
           )
           .toList();
 
-      final teacherNames = await _fetchVisibleTeacherNames();
+      final teacherNames = await _fetchTeacherNames(
+        lessons.map((lesson) => lesson.teacherId).toSet(),
+      );
 
       return lessons
           .map(
@@ -107,6 +109,27 @@ class LessonRepository {
           .eq('student_id', user.id)
           .order('starts_at');
 
+      final parsedLessonsByRight = <String, Lesson>{};
+      final teacherIds = <String>{};
+      for (final raw in lessonsRows as List) {
+        final row = Map<String, dynamic>.from(raw as Map);
+        final rightId = row['lesson_right_id'] as String?;
+        if (rightId == null) {
+          continue;
+        }
+        final lesson = Lesson.fromJson(row);
+        parsedLessonsByRight[rightId] = lesson;
+        teacherIds.add(lesson.teacherId);
+      }
+
+      final teacherNames = await _fetchTeacherNames(teacherIds);
+      final lessonsByRight = <String, Lesson>{
+        for (final entry in parsedLessonsByRight.entries)
+          entry.key: entry.value.copyWithTeacherName(
+            teacherNames[entry.value.teacherId],
+          ),
+      };
+
       final cancellationRows = await _client
           .from('lesson_cancellation_events')
           .select(
@@ -127,21 +150,6 @@ class LessonRepository {
             .select('branch_id, semester_id, starts_on, ends_on');
       } on PostgrestException {
         overrideRows = const [];
-      }
-
-      final teacherNames = await _fetchVisibleTeacherNames();
-
-      final lessonsByRight = <String, Lesson>{};
-      for (final raw in lessonsRows as List) {
-        final row = Map<String, dynamic>.from(raw as Map);
-        final rightId = row['lesson_right_id'] as String?;
-        if (rightId == null) {
-          continue;
-        }
-        final lesson = Lesson.fromJson(row);
-        lessonsByRight[rightId] = lesson.copyWithTeacherName(
-          teacherNames[lesson.teacherId],
-        );
       }
 
       final cancellationsByRight = <String, List<LessonCancellationHistory>>{};
@@ -358,12 +366,18 @@ class LessonRepository {
     }
   }
 
-  Future<Map<String, String>> _fetchVisibleTeacherNames() async {
+  Future<Map<String, String>> _fetchTeacherNames(
+    Set<String> teacherIds,
+  ) async {
+    if (teacherIds.isEmpty) {
+      return const {};
+    }
+
     try {
       final rows = await _client
           .from('profiles')
-          .select('id, display_name, role')
-          .eq('role', 'teacher');
+          .select('id, display_name')
+          .inFilter('id', teacherIds.toList());
 
       return {
         for (final raw in rows as List)
