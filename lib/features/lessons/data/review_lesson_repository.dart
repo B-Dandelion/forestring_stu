@@ -110,12 +110,7 @@ class ReviewLessonRepository extends LessonRepository {
     required DateTime from,
     required DateTime to,
   }) async {
-    final result = _lessons
-        .where(
-          (lesson) =>
-              !lesson.startsAt.isBefore(from) && lesson.startsAt.isBefore(to),
-        )
-        .toList()
+    final result = [..._lessons]
       ..sort((a, b) => a.startsAt.compareTo(b.startsAt));
     return result;
   }
