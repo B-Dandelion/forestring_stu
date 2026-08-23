@@ -6,7 +6,6 @@ import '../../../core/theme/forestring_theme.dart';
 import '../../../core/widgets/student_navigation.dart';
 import '../../auth/domain/current_profile.dart';
 import '../../auth/presentation/auth_controller.dart';
-import '../data/lesson_repository.dart';
 import '../domain/lesson_history.dart';
 import 'lesson_controller.dart';
 import 'reschedule_page.dart';
@@ -24,18 +23,22 @@ class StudentMyPage extends StatefulWidget {
 }
 
 class _StudentMyPageState extends State<StudentMyPage> {
-  final LessonRepository _repository = LessonRepository();
   late Future<LessonHistoryData> _historyFuture;
+  bool _initialized = false;
 
   @override
-  void initState() {
-    super.initState();
-    _historyFuture = _repository.fetchMyLessonHistory();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_initialized) {
+      return;
+    }
+    _initialized = true;
+    _historyFuture = context.read<LessonController>().fetchLessonHistory();
   }
 
   Future<void> _reload() async {
     setState(() {
-      _historyFuture = _repository.fetchMyLessonHistory();
+      _historyFuture = context.read<LessonController>().fetchLessonHistory();
     });
     await _historyFuture;
   }
