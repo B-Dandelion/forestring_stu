@@ -1,31 +1,49 @@
 import 'package:flutter/material.dart';
-import 'package:forestring_stu/data/constant.dart';
-import 'package:forestring_stu/view/Intro/Intro_page.dart';
+import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'package:firebase_core/firebase_core.dart';
-import 'package:forestring_stu/firebase_options.dart';
+import 'app/app_gate.dart';
+import 'core/config/app_config.dart';
+import 'core/theme/forestring_theme.dart';
+import 'features/auth/data/auth_repository.dart';
+import 'features/auth/presentation/auth_controller.dart';
 
-void main() async {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
+  AppConfig.validate();
+
+  await Supabase.initialize(
+    url: AppConfig.supabaseUrl,
+    publishableKey: AppConfig.supabasePublishableKey,
   );
 
-  runApp(const Forestring());
+  final authController = AuthController(
+    AuthRepository(),
+  );
+
+  await authController.initialize();
+
+  runApp(
+    ChangeNotifierProvider.value(
+      value: authController,
+      child: const ForestringStudent(),
+    ),
+  );
 }
 
-class Forestring extends StatelessWidget {
-  const Forestring({super.key});
+class ForestringStudent extends StatelessWidget {
+  const ForestringStudent({
+    super.key,
+  });
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Forestring_stu',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: PRIMARY_COLOR),
-        useMaterial3: true,
-      ),
-      home: const IntroPage()
+      debugShowCheckedModeBanner: false,
+      title: '포레스트링 수강생용',
+      theme: buildForestringTheme(),
+      home: const AppGate(),
     );
   }
 }
