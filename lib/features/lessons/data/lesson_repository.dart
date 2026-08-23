@@ -32,8 +32,9 @@ class LessonRepository {
       final rows = await _client
           .from('lessons')
           .select(
-            'id, teacher_id, occurrence_at, starts_at, duration_minutes, '
-            'ends_at, lesson_type, status, lesson_right_id, rescheduled_by',
+            'id, student_id, teacher_id, occurrence_at, starts_at, '
+            'duration_minutes, ends_at, lesson_type, status, lesson_right_id, '
+            'rescheduled_by, updated_at',
           )
           .eq('student_id', user.id)
           .gte('starts_at', from.toUtc().toIso8601String())
@@ -48,12 +49,12 @@ class LessonRepository {
           )
           .toList();
 
-      final names = await _fetchVisibleProfileNames();
+      final actors = await _fetchVisibleActors();
 
       return lessons
           .map(
             (lesson) => lesson.copyWithTeacherName(
-              names[lesson.teacherId],
+              actors[lesson.teacherId]?.displayName,
             ),
           )
           .toList();
@@ -71,24 +72,37 @@ class LessonRepository {
     }
 
     try {
+      final studentRow = await _client
+          .from('students')
+          .select('student_type')
+          .eq('id', user.id)
+          .single();
+      final studentType = studentRow['student_type'].toString();
+
       final rightsRows = await _client
           .from('lesson_rights')
           .select(
             'id, branch_id, usable_semester_id, origin, sequence_no, '
-            'duration_minutes, status, issued_at',
+            'duration_minutes, status, issued_at, reserved_at',
           )
           .eq('student_id', user.id)
           .order('issued_at', ascending: false);
 
-      if ((rightsRows as List).isEmpty) {
-        return const LessonHistoryData(semesters: []);
+      final rightsList = rightsRows as List;
+      if (rightsList.isEmpty) {
+        return LessonHistoryData(
+          studentId: user.id,
+          studentType: studentType,
+          semesters: const [],
+        );
       }
 
       final lessonsRows = await _client
           .from('lessons')
           .select(
-            'id, teacher_id, occurrence_at, starts_at, duration_minutes, '
-            'ends_at, lesson_type, status, lesson_right_id, rescheduled_by',
+            'id, student_id, teacher_id, occurrence_at, starts_at, '
+            'duration_minutes, ends_at, lesson_type, status, lesson_right_id, '
+            'rescheduled_by, updated_at',
           )
           .eq('student_id', user.id)
           .order('starts_at');
@@ -96,7 +110,8 @@ class LessonRepository {
       final cancellationRows = await _client
           .from('lesson_cancellation_events')
           .select(
-            'lesson_right_id, origin, counts_toward_limit, canceled_at, created_at',
+            'lesson_right_id, origin, actor_id, counts_toward_limit, '
+            'canceled_at, created_at',
           )
           .eq('student_id', user.id)
           .order('created_at');
@@ -114,7 +129,7 @@ class LessonRepository {
         overrideRows = const [];
       }
 
-      final names = await _fetchVisibleProfileNames();
+      final actors = await _fetchVisibleActors();
 
       final lessonsByRight = <String, Lesson>{};
       for (final raw in lessonsRows as List) {
@@ -125,7 +140,7 @@ class LessonRepository {
         }
         final lesson = Lesson.fromJson(row);
         lessonsByRight[rightId] = lesson.copyWithTeacherName(
-          names[lesson.teacherId],
+          actors[lesson.teacherId]?.displayName,
         );
       }
 
@@ -133,11 +148,17 @@ class LessonRepository {
       for (final raw in cancellationRows as List) {
         final row = Map<String, dynamic>.from(raw as Map);
         final rightId = row['lesson_right_id'] as String;
+        final actorId = row['actor_id'] as String;
         final canceledAtValue = row['canceled_at'] ?? row['created_at'];
+
         cancellationsByRight.putIfAbsent(rightId, () => []).add(
               LessonCancellationHistory(
                 origin: row['origin'].toString(),
-                canceledAt: DateTime.parse(canceledAtValue.toString()).toLocal(),
+                actorId: actorId,
+                actor: actors[actorId],
+                canceledAt: DateTime.parse(
+                  canceledAtValue.toString(),
+                ).toLocal(),
                 countsTowardLimit: row['counts_toward_limit'] == true,
               ),
             );
@@ -157,10 +178,13 @@ class LessonRepository {
       final rightsBySemester = <String, List<LessonRightHistory>>{};
       final branchBySemester = <String, String>{};
 
-      for (final raw in rightsRows) {
+      for (final raw in rightsList) {
         final row = Map<String, dynamic>.from(raw as Map);
         final rightId = row['id'] as String;
         final semesterId = row['usable_semester_id'] as String;
+        final lesson = lessonsByRight[rightId];
+        final rescheduledBy = lesson?.rescheduledBy;
+
         branchBySemester[semesterId] = row['branch_id'] as String;
 
         rightsBySemester.putIfAbsent(semesterId, () => []).add(
@@ -170,7 +194,12 @@ class LessonRepository {
                 status: row['status'].toString(),
                 sequenceNo: row['sequence_no'] as int? ?? 0,
                 durationMinutes: row['duration_minutes'] as int,
-                lesson: lessonsByRight[rightId],
+                reservedAt: row['reserved_at'] == null
+                    ? null
+                    : DateTime.parse(row['reserved_at'].toString()).toLocal(),
+                lesson: lesson,
+                rescheduledActor:
+                    rescheduledBy == null ? null : actors[rescheduledBy],
                 cancellations: cancellationsByRight[rightId] ?? const [],
               ),
             );
@@ -210,7 +239,11 @@ class LessonRepository {
       }
 
       semesterHistories.sort((a, b) => b.startsOn.compareTo(a.startsOn));
-      return LessonHistoryData(semesters: semesterHistories);
+      return LessonHistoryData(
+        studentId: user.id,
+        studentType: studentType,
+        semesters: semesterHistories,
+      );
     } on PostgrestException catch (error) {
       throw LessonFailure(_friendlyMessage(error.message));
     } catch (error) {
@@ -330,15 +363,19 @@ class LessonRepository {
     }
   }
 
-  Future<Map<String, String>> _fetchVisibleProfileNames() async {
+  Future<Map<String, HistoryActor>> _fetchVisibleActors() async {
     try {
       final rows = await _client
           .from('profiles')
-          .select('id, display_name');
+          .select('id, display_name, role');
 
       return {
-        for (final row in rows as List)
-          row['id'] as String: row['display_name'] as String,
+        for (final raw in rows as List)
+          (raw as Map)['id'] as String: HistoryActor(
+            id: raw['id'] as String,
+            displayName: raw['display_name'] as String,
+            role: raw['role'].toString(),
+          ),
       };
     } on PostgrestException {
       return const {};
