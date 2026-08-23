@@ -29,6 +29,8 @@ class _StudentHomePageState extends State<StudentHomePage> {
   DateTime _selectedDate = DateTime.now();
   DateTime _focusedDate = DateTime.now();
 
+  static const _weekdayLabels = ['월', '화', '수', '목', '금', '토', '일'];
+
   @override
   Widget build(BuildContext context) {
     final controller = context.watch<LessonController>();
@@ -65,6 +67,7 @@ class _StudentHomePageState extends State<StudentHomePage> {
               firstDay: DateTime(now.year, now.month - 2, 1),
               lastDay: DateTime(now.year, now.month + 4, 0),
               focusedDay: _focusedDate,
+              startingDayOfWeek: StartingDayOfWeek.sunday,
               selectedDayPredicate: (day) =>
                   isSameDay(_selectedDate, day),
               eventLoader: controller.lessonsOn,
@@ -77,13 +80,23 @@ class _StudentHomePageState extends State<StudentHomePage> {
               onPageChanged: (focusedDay) {
                 _focusedDate = focusedDay;
               },
-              headerStyle: const HeaderStyle(
+              headerStyle: HeaderStyle(
                 titleCentered: true,
                 formatButtonVisible: false,
-                titleTextStyle: TextStyle(
-                  fontFamily: 'OpenSans',
+                titleTextFormatter: (date, locale) => '${date.month}월',
+                leftChevronIcon: const Icon(
+                  Icons.chevron_left,
+                  color: primaryColor,
+                ),
+                rightChevronIcon: const Icon(
+                  Icons.chevron_right,
+                  color: primaryColor,
+                ),
+                titleTextStyle: const TextStyle(
+                  fontFamily: 'ELAND',
                   fontWeight: FontWeight.w500,
-                  fontSize: 20,
+                  fontSize: 22,
+                  color: primaryColor,
                 ),
               ),
               calendarStyle: const CalendarStyle(
@@ -102,12 +115,12 @@ class _StudentHomePageState extends State<StudentHomePage> {
               ),
               calendarBuilders: CalendarBuilders(
                 dowBuilder: (context, day) {
-                  final text = DateFormat.E().format(day);
+                  final label = _weekdayLabels[day.weekday - 1];
                   return Center(
                     child: Text(
-                      text,
+                      label,
                       style: TextStyle(
-                        fontFamily: 'OpenSans',
+                        fontFamily: 'ELAND',
                         fontWeight: FontWeight.w500,
                         color: day.weekday == DateTime.sunday
                             ? Colors.red
@@ -133,7 +146,7 @@ class _StudentHomePageState extends State<StudentHomePage> {
               ),
               child: Text(
                 '${DateFormat('M월 d일').format(_selectedDate)} · '
-                '${selectedLessons.where((lesson) => !lesson.isCanceled).length}개 수업',
+                '${selectedLessons.length}개 수업',
                 style: forestringTextStyle.copyWith(
                   color: primaryColor,
                   fontWeight: FontWeight.w500,
