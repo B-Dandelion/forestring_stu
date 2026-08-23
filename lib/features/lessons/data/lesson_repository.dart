@@ -86,20 +86,31 @@ class LessonRepository {
     try {
       final right = await _client
           .from('lesson_rights')
-          .select('usable_semester_id')
+          .select('usable_semester_id, branch_id')
           .eq('id', rightId)
           .single();
 
       final semesterId = right['usable_semester_id'] as String;
+      final branchId = right['branch_id'] as String;
       final semester = await _client
           .from('semesters')
           .select('starts_on, ends_on')
           .eq('id', semesterId)
           .single();
 
+      final override = await _client
+          .from('branch_semester_overrides')
+          .select('starts_on, ends_on')
+          .eq('branch_id', branchId)
+          .eq('semester_id', semesterId)
+          .maybeSingle();
+
+      final startsOn = override?['starts_on'] ?? semester['starts_on'];
+      final endsOn = override?['ends_on'] ?? semester['ends_on'];
+
       return LessonBookingWindow(
-        startsOn: DateTime.parse(semester['starts_on'].toString()),
-        endsOn: DateTime.parse(semester['ends_on'].toString()),
+        startsOn: DateTime.parse(startsOn.toString()),
+        endsOn: DateTime.parse(endsOn.toString()),
       );
     } on PostgrestException catch (error) {
       throw LessonFailure(_friendlyMessage(error.message));
