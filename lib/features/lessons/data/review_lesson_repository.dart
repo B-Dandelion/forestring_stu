@@ -39,18 +39,28 @@ class ReviewLessonRepository extends LessonRepository {
     }
 
     final now = DateTime.now();
-    var semesterStart = DateTime(now.year, now.month, 16);
-    if (now.isBefore(semesterStart)) {
-      semesterStart = DateTime(now.year, now.month - 1, 16);
+    var anchorMonth = DateTime(now.year, now.month, 16);
+    if (now.isBefore(anchorMonth)) {
+      anchorMonth = DateTime(now.year, now.month - 1, 16);
     }
 
-    const lessonOffsets = [9, 12, 16, 19];
     var lessonSequence = 1;
 
     for (var semesterIndex = 0; semesterIndex < 4; semesterIndex++) {
-      final start = semesterStart.add(Duration(days: semesterIndex * 35));
-      final end = start.add(const Duration(days: 35));
+      final start = DateTime(
+        anchorMonth.year,
+        anchorMonth.month + semesterIndex,
+        16,
+      );
+      final end = DateTime(
+        anchorMonth.year,
+        anchorMonth.month + semesterIndex + 1,
+        15,
+      );
       final semesterId = 'review-semester-${semesterIndex + 1}';
+      final lessonOffsets = semesterIndex == 0
+          ? const [9, 12, 16, 19]
+          : const [7, 14, 21, 28];
 
       _semesters.add(
         _ReviewSemester(
