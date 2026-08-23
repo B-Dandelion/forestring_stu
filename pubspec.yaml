@@ -1,7 +1,7 @@
 name: forestring_stu
 description: "Forestring App for students."
 publish_to: 'none'
-version: 3.0.0+9
+version: 3.0.0+10
 
 environment:
   sdk: ^3.5.1
