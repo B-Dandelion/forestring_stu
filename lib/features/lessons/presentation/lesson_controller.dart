@@ -82,6 +82,17 @@ class LessonController extends ChangeNotifier {
     }
   }
 
+  Future<LessonBookingWindow> getBookingWindow(Lesson lesson) async {
+    final rightId = lesson.lessonRightId;
+    if (rightId == null || rightId.isEmpty) {
+      throw const LessonFailure(
+        '이 수업에는 다시 예약할 수 있는 수업권이 없습니다.',
+      );
+    }
+
+    return _repository.getBookingWindow(rightId: rightId);
+  }
+
   Future<List<LessonBookingOption>> getBookingOptions({
     required Lesson lesson,
     required DateTime selectedDate,
