@@ -34,6 +34,7 @@ enum LessonStatus {
 class Lesson {
   const Lesson({
     required this.id,
+    required this.studentId,
     required this.teacherId,
     required this.startsAt,
     required this.endsAt,
@@ -47,6 +48,7 @@ class Lesson {
   });
 
   final String id;
+  final String studentId;
   final String teacherId;
   final DateTime startsAt;
   final DateTime endsAt;
@@ -60,11 +62,13 @@ class Lesson {
 
   bool get isCanceled => status == LessonStatus.canceled;
 
-  bool get isRescheduled {
-    if (rescheduledBy != null) {
-      return true;
-    }
+  bool get isStudentRebooked =>
+      rescheduledBy != null && rescheduledBy == studentId;
 
+  bool get isAcademyChanged =>
+      rescheduledBy != null && rescheduledBy != studentId;
+
+  bool get hasMovedFromOccurrence {
     final original = occurrenceAt;
     if (original == null) {
       return false;
@@ -72,16 +76,33 @@ class Lesson {
     return original.toUtc().difference(startsAt.toUtc()).inMinutes != 0;
   }
 
+  bool get isRescheduled =>
+      isStudentRebooked || isAcademyChanged || hasMovedFromOccurrence;
+
   String get displayTypeLabel {
-    if (isRescheduled) {
+    if (isStudentRebooked) {
       return '재예약 수업';
     }
+    if (isAcademyChanged || hasMovedFromOccurrence) {
+      return '변경 수업';
+    }
     return type.label;
+  }
+
+  String? get changeBadgeLabel {
+    if (isStudentRebooked) {
+      return '재예약';
+    }
+    if (isAcademyChanged || hasMovedFromOccurrence) {
+      return '변경';
+    }
+    return null;
   }
 
   Lesson copyWithTeacherName(String? name) {
     return Lesson(
       id: id,
+      studentId: studentId,
       teacherId: teacherId,
       startsAt: startsAt,
       endsAt: endsAt,
@@ -102,6 +123,7 @@ class Lesson {
 
     return Lesson(
       id: json['id'] as String,
+      studentId: json['student_id'] as String,
       teacherId: json['teacher_id'] as String,
       startsAt: parseDate(json['starts_at']),
       endsAt: parseDate(json['ends_at']),
