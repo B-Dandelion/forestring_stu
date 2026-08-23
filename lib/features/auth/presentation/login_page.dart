@@ -78,7 +78,7 @@ class _LoginPageState extends State<LoginPage> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Image.asset(
-                      'assets/img/로고_배경제거.png',
+                      'assets/img/student_login_logo.png',
                       width: width * 0.73,
                       fit: BoxFit.contain,
                     ),
