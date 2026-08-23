@@ -6,7 +6,7 @@ class StudentAppBar extends StatelessWidget
     implements PreferredSizeWidget {
   const StudentAppBar({
     super.key,
-    this.title = 'FORESTRING',
+    this.title = '포레스트링 수강생',
   });
 
   final String title;
@@ -25,7 +25,7 @@ class StudentAppBar extends StatelessWidget
         title,
         style: const TextStyle(
           color: Colors.white,
-          fontFamily: 'OpenSans',
+          fontFamily: 'ELAND',
           fontWeight: FontWeight.w500,
           fontSize: 20,
         ),
