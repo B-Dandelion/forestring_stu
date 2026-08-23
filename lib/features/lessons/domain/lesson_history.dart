@@ -2,10 +2,19 @@ import 'lesson.dart';
 
 class LessonHistoryData {
   const LessonHistoryData({
+    required this.studentId,
+    required this.studentType,
     required this.semesters,
   });
 
+  final String studentId;
+  final String studentType;
   final List<SemesterLessonHistory> semesters;
+
+  bool get isRegular => studentType == 'regular';
+  bool get isFlex => studentType == 'flex';
+
+  String get studentTypeLabel => isFlex ? '비정규 수강생' : '정규 수강생';
 
   SemesterLessonHistory? get currentSemester {
     final now = DateTime.now();
@@ -50,10 +59,37 @@ class SemesterLessonHistory {
       rights.where((right) => right.status == 'reserved').length;
   int get availableRights =>
       rights.where((right) => right.status == 'available').length;
+  int get consumedRights =>
+      rights.where((right) => right.status == 'consumed').length;
   int get studentCancellationCount => rights.fold(
         0,
         (sum, right) => sum + right.studentCancellationCount,
       );
+}
+
+class HistoryActor {
+  const HistoryActor({
+    required this.id,
+    required this.displayName,
+    required this.role,
+  });
+
+  final String id;
+  final String displayName;
+  final String role;
+
+  String labelForStudent(String studentId) {
+    if (id == studentId) {
+      return '본인';
+    }
+
+    return switch (role) {
+      'master' => '$displayName 관리자',
+      'manager' => '$displayName 지점장',
+      'teacher' => '$displayName 선생님',
+      _ => displayName,
+    };
+  }
 }
 
 class LessonRightHistory {
@@ -64,7 +100,9 @@ class LessonRightHistory {
     required this.sequenceNo,
     required this.durationMinutes,
     required this.cancellations,
+    this.reservedAt,
     this.lesson,
+    this.rescheduledActor,
   });
 
   final String id;
@@ -72,8 +110,10 @@ class LessonRightHistory {
   final String status;
   final int sequenceNo;
   final int durationMinutes;
+  final DateTime? reservedAt;
   final Lesson? lesson;
   final List<LessonCancellationHistory> cancellations;
+  final HistoryActor? rescheduledActor;
 
   int get cancellationCount => cancellations.length;
   int get studentCancellationCount =>
@@ -87,9 +127,26 @@ class LessonRightHistory {
       wasCanceled &&
       status == 'reserved' &&
       lesson != null &&
-      !lesson!.isCanceled;
+      !lesson!.isCanceled &&
+      lesson!.rescheduledBy != null;
 
-  DateTime? get originalStartsAt => lesson?.occurrenceAt ?? lesson?.startsAt;
+  LessonCancellationHistory? get latestCancellation {
+    if (cancellations.isEmpty) {
+      return null;
+    }
+    final sorted = [...cancellations]
+      ..sort((a, b) => b.canceledAt.compareTo(a.canceledAt));
+    return sorted.first;
+  }
+
+  DateTime? get originalStartsAt {
+    final value = lesson;
+    if (value == null) {
+      return null;
+    }
+    return value.occurrenceAt ?? value.startsAt;
+  }
+
   DateTime? get currentStartsAt => lesson?.startsAt;
   DateTime? get currentEndsAt => lesson?.endsAt;
 
@@ -99,7 +156,7 @@ class LessonRightHistory {
     }
 
     return switch (status) {
-      'available' => '재예약 대기',
+      'available' => wasCanceled ? '재예약 대기' : '사용 가능',
       'reserved' => '예약됨',
       'consumed' => '사용 완료',
       'expired' => '기간 종료',
@@ -121,13 +178,22 @@ class LessonRightHistory {
 class LessonCancellationHistory {
   const LessonCancellationHistory({
     required this.origin,
+    required this.actorId,
     required this.canceledAt,
     required this.countsTowardLimit,
+    this.actor,
   });
 
   final String origin;
+  final String actorId;
   final DateTime canceledAt;
   final bool countsTowardLimit;
+  final HistoryActor? actor;
 
-  String get originLabel => origin == 'student' ? '학생 취소' : '학원 취소';
+  String actorLabel(String studentId) {
+    if (actorId == studentId || origin == 'student') {
+      return '본인';
+    }
+    return actor?.labelForStudent(studentId) ?? '학원 관리자';
+  }
 }
