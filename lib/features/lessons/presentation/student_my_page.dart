@@ -199,7 +199,7 @@ class _StudentMyPageState extends State<StudentMyPage> {
     );
     final cancellationLimit = history.isRegular
         ? (baseCount ~/ 4) * 2
-        : baseCount ~/ 4;
+        : (baseCount ~/ 4) * 2;
     final remainingCancellations =
         cancellationLimit > countedStudentCancellations
             ? cancellationLimit - countedStudentCancellations
