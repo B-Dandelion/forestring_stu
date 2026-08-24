@@ -8,6 +8,7 @@ import '../../../core/widgets/student_navigation.dart';
 import '../../auth/domain/current_profile.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../domain/lesson.dart';
+import '../domain/lesson_history.dart';
 import 'lesson_controller.dart';
 import 'student_my_page.dart';
 
@@ -26,11 +27,13 @@ class ReschedulePage extends StatefulWidget {
 class _ReschedulePageState extends State<ReschedulePage> {
   static const _weekdayLabels = ['월', '화', '수', '목', '금', '토', '일'];
 
-  String? _selectedLessonId;
+  List<LessonRightHistory> _bookingRights = const [];
+  String? _selectedRightId;
   DateTime _selectedDate = DateTime.now();
   DateTime _focusedDate = DateTime.now();
   LessonBookingWindow? _window;
   List<LessonBookingOption> _options = const [];
+  bool _loadingRights = false;
   bool _loadingWindow = false;
   bool _loadingOptions = false;
   bool _booking = false;
@@ -49,10 +52,7 @@ class _ReschedulePageState extends State<ReschedulePage> {
       if (!mounted) {
         return;
       }
-      final canceled = context.read<LessonController>().canceledLessons;
-      if (canceled.isNotEmpty) {
-        _selectLesson(canceled.first);
-      }
+      _loadBookingRights();
     });
   }
 
@@ -73,10 +73,60 @@ class _ReschedulePageState extends State<ReschedulePage> {
     return value;
   }
 
-  Future<void> _selectLesson(Lesson lesson) async {
+  Future<void> _loadBookingRights() async {
     final token = ++_loadToken;
     setState(() {
-      _selectedLessonId = lesson.id;
+      _loadingRights = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final rights = await context
+          .read<LessonController>()
+          .fetchAvailableBookingRights();
+      if (!mounted || token != _loadToken) {
+        return;
+      }
+
+      setState(() {
+        _bookingRights = rights;
+        _loadingRights = false;
+        if (rights.isEmpty) {
+          _selectedRightId = null;
+          _window = null;
+          _options = const [];
+        }
+      });
+
+      if (rights.isNotEmpty) {
+        final selected = rights.where(
+          (right) => right.id == _selectedRightId,
+        );
+        await _selectRight(selected.isEmpty ? rights.first : selected.first);
+      }
+    } catch (error) {
+      if (!mounted || token != _loadToken) {
+        return;
+      }
+      setState(() {
+        _bookingRights = const [];
+        _loadingRights = false;
+        _errorMessage = error.toString();
+      });
+    }
+  }
+
+  Future<void> _refresh() async {
+    await context.read<LessonController>().reload();
+    if (mounted) {
+      await _loadBookingRights();
+    }
+  }
+
+  Future<void> _selectRight(LessonRightHistory right) async {
+    final token = ++_loadToken;
+    setState(() {
+      _selectedRightId = right.id;
       _window = null;
       _options = const [];
       _loadingWindow = true;
@@ -86,19 +136,20 @@ class _ReschedulePageState extends State<ReschedulePage> {
 
     try {
       final controller = context.read<LessonController>();
-      final window = await controller.getBookingWindow(lesson);
+      final window = await controller.getBookingWindow(right.id);
       if (!mounted || token != _loadToken) {
         return;
       }
 
-      final selectedDate = _clampToWindow(lesson.startsAt, window);
+      final preferredDate = right.lesson?.startsAt ?? DateTime.now();
+      final selectedDate = _clampToWindow(preferredDate, window);
       setState(() {
         _window = window;
         _selectedDate = selectedDate;
         _focusedDate = selectedDate;
         _loadingWindow = false;
       });
-      await _loadOptions(lesson, selectedDate);
+      await _loadOptions(right, selectedDate);
     } catch (error) {
       if (!mounted || token != _loadToken) {
         return;
@@ -110,7 +161,10 @@ class _ReschedulePageState extends State<ReschedulePage> {
     }
   }
 
-  Future<void> _loadOptions(Lesson lesson, DateTime date) async {
+  Future<void> _loadOptions(
+    LessonRightHistory right,
+    DateTime date,
+  ) async {
     final token = ++_loadToken;
     setState(() {
       _loadingOptions = true;
@@ -120,7 +174,7 @@ class _ReschedulePageState extends State<ReschedulePage> {
 
     try {
       final loaded = await context.read<LessonController>().getBookingOptions(
-            lesson: lesson,
+            rightId: right.id,
             selectedDate: date,
           );
       if (!mounted || token != _loadToken) {
@@ -142,7 +196,7 @@ class _ReschedulePageState extends State<ReschedulePage> {
   }
 
   Future<void> _book(
-    Lesson lesson,
+    LessonRightHistory right,
     LessonBookingOption option,
   ) async {
     if (_booking) {
@@ -181,7 +235,7 @@ class _ReschedulePageState extends State<ReschedulePage> {
 
     final controller = context.read<LessonController>();
     final ok = await controller.bookLessonRight(
-      lesson: lesson,
+      rightId: right.id,
       option: option,
     );
 
@@ -210,40 +264,47 @@ class _ReschedulePageState extends State<ReschedulePage> {
       ),
     );
 
-    final remaining = controller.canceledLessons;
-    if (remaining.isEmpty) {
-      setState(() {
-        _selectedLessonId = null;
-        _window = null;
-        _options = const [];
-      });
-    } else {
-      await _selectLesson(remaining.first);
+    await _loadBookingRights();
+  }
+
+  String _rightLabel(LessonRightHistory right) {
+    final lesson = right.lesson;
+    if (lesson != null && lesson.isCanceled) {
+      return '${DateFormat('M월 d일 HH:mm').format(lesson.startsAt)} '
+          '· 재예약 · ${right.durationMinutes}분';
     }
+
+    final type = switch (right.origin) {
+      'flex_base' => '자율 예약 수업권',
+      'carryover' => '보강 수업권',
+      'regular_base' => '정규 수업권',
+      _ => '수업권',
+    };
+    return '$type ${right.sequenceNo} · ${right.durationMinutes}분';
   }
 
   @override
   Widget build(BuildContext context) {
-    final controller = context.watch<LessonController>();
-    final canceled = controller.canceledLessons;
+    final rights = _bookingRights;
+    final selectedRight = rights.isEmpty
+        ? null
+        : rights.firstWhere(
+            (right) => right.id == _selectedRightId,
+            orElse: () => rights.first,
+          );
 
-    Lesson? selectedLesson;
-    if (canceled.isNotEmpty) {
-      selectedLesson = canceled.firstWhere(
-        (lesson) => lesson.id == _selectedLessonId,
-        orElse: () => canceled.first,
-      );
-      if (_selectedLessonId != selectedLesson.id && !_loadingWindow) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            _selectLesson(selectedLesson!);
-          }
-        });
-      }
+    if (selectedRight != null &&
+        _selectedRightId != selectedRight.id &&
+        !_loadingWindow) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _selectRight(selectedRight);
+        }
+      });
     }
 
     return Scaffold(
-      appBar: const StudentAppBar(),
+      appBar: const StudentAppBar(title: '수업 예약·변경'),
       drawer: StudentDrawer(
         displayName: widget.profile.displayName,
         onHome: () {
@@ -271,67 +332,73 @@ class _ReschedulePageState extends State<ReschedulePage> {
         },
       ),
       body: SafeArea(
-        child: canceled.isEmpty
-            ? RefreshIndicator(
-                onRefresh: controller.reload,
-                child: ListView(
-                  padding: const EdgeInsets.all(24),
-                  children: [
-                    const SizedBox(height: 120),
-                    const Icon(
-                      Icons.event_available_outlined,
-                      size: 52,
-                      color: primaryColor,
+        child: _loadingRights && rights.isEmpty
+            ? const Center(child: CircularProgressIndicator())
+            : rights.isEmpty
+                ? RefreshIndicator(
+                    onRefresh: _refresh,
+                    child: ListView(
+                      padding: const EdgeInsets.all(24),
+                      children: [
+                        const SizedBox(height: 120),
+                        const Icon(
+                          Icons.event_available_outlined,
+                          size: 52,
+                          color: primaryColor,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          _errorMessage ?? '예약 가능한 수업권이 없습니다.',
+                          textAlign: TextAlign.center,
+                          style: forestringTextStyle.copyWith(
+                            fontSize: 17,
+                            color: _errorMessage == null
+                                ? Colors.black
+                                : Colors.redAccent,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 16),
-                    Text(
-                      '재예약할 수업이 없습니다.',
-                      textAlign: TextAlign.center,
-                      style: forestringTextStyle.copyWith(fontSize: 17),
-                    ),
-                  ],
-                ),
-              )
-            : Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
-                    child: DropdownButtonFormField<String>(
-                      value: selectedLesson?.id,
-                      decoration: const InputDecoration(
-                        labelText: '재예약할 수업',
-                        border: OutlineInputBorder(),
+                  )
+                : Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+                        child: DropdownButtonFormField<String>(
+                          value: selectedRight?.id,
+                          decoration: const InputDecoration(
+                            labelText: '예약할 수업권',
+                            border: OutlineInputBorder(),
+                          ),
+                          items: rights
+                              .map(
+                                (right) => DropdownMenuItem<String>(
+                                  value: right.id,
+                                  child: Text(
+                                    _rightLabel(right),
+                                    style: forestringTextStyle,
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: _loadingWindow || _booking
+                              ? null
+                              : (id) {
+                                  if (id == null) {
+                                    return;
+                                  }
+                                  final right = rights.firstWhere(
+                                    (item) => item.id == id,
+                                  );
+                                  _selectRight(right);
+                                },
+                        ),
                       ),
-                      items: canceled
-                          .map(
-                            (lesson) => DropdownMenuItem<String>(
-                              value: lesson.id,
-                              child: Text(
-                                '${DateFormat('M월 d일 HH:mm').format(lesson.startsAt)} '
-                                '· ${lesson.durationMinutes}분',
-                                style: forestringTextStyle,
-                              ),
-                            ),
-                          )
-                          .toList(),
-                      onChanged: _loadingWindow || _booking
-                          ? null
-                          : (id) {
-                              if (id == null) {
-                                return;
-                              }
-                              final lesson = canceled.firstWhere(
-                                (item) => item.id == id,
-                              );
-                              _selectLesson(lesson);
-                            },
-                    ),
-                  ),
                   if (_loadingWindow)
                     const Expanded(
                       child: Center(child: CircularProgressIndicator()),
                     )
-                  else if (_window != null && selectedLesson != null) ...[
+                  else if (_window != null && selectedRight != null) ...[
                     TableCalendar<void>(
                       firstDay: _dateOnly(_window!.startsOn),
                       lastDay: _dateOnly(_window!.endsOn),
@@ -344,7 +411,7 @@ class _ReschedulePageState extends State<ReschedulePage> {
                           _selectedDate = selectedDay;
                           _focusedDate = focusedDay;
                         });
-                        _loadOptions(selectedLesson!, selectedDay);
+                        _loadOptions(selectedRight, selectedDay);
                       },
                       onPageChanged: (focusedDay) {
                         _focusedDate = focusedDay;
@@ -463,7 +530,7 @@ class _ReschedulePageState extends State<ReschedulePage> {
                                           onPressed: _booking
                                               ? null
                                               : () => _book(
-                                                    selectedLesson!,
+                                                    selectedRight,
                                                     option,
                                                   ),
                                           style: OutlinedButton.styleFrom(

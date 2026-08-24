@@ -59,6 +59,18 @@ class LessonController extends ChangeNotifier {
     return _repository.fetchMyLessonHistory();
   }
 
+  Future<List<LessonRightHistory>> fetchAvailableBookingRights() async {
+    final history = await _repository.fetchMyLessonHistory();
+    final semester = history.currentSemester;
+    if (semester == null) {
+      return const [];
+    }
+
+    return semester.rights
+        .where((right) => right.status == 'available')
+        .toList();
+  }
+
   List<Lesson> lessonsOn(DateTime date) {
     return _lessons.where((lesson) {
       if (lesson.isCanceled) {
@@ -87,28 +99,14 @@ class LessonController extends ChangeNotifier {
     }
   }
 
-  Future<LessonBookingWindow> getBookingWindow(Lesson lesson) async {
-    final rightId = lesson.lessonRightId;
-    if (rightId == null || rightId.isEmpty) {
-      throw const LessonFailure(
-        '이 수업에는 다시 예약할 수 있는 수업권이 없습니다.',
-      );
-    }
-
+  Future<LessonBookingWindow> getBookingWindow(String rightId) async {
     return _repository.getBookingWindow(rightId: rightId);
   }
 
   Future<List<LessonBookingOption>> getBookingOptions({
-    required Lesson lesson,
+    required String rightId,
     required DateTime selectedDate,
   }) async {
-    final rightId = lesson.lessonRightId;
-    if (rightId == null || rightId.isEmpty) {
-      throw const LessonFailure(
-        '이 수업에는 다시 예약할 수 있는 수업권이 없습니다.',
-      );
-    }
-
     return _repository.getBookingOptions(
       rightId: rightId,
       selectedDate: selectedDate,
@@ -116,16 +114,9 @@ class LessonController extends ChangeNotifier {
   }
 
   Future<bool> bookLessonRight({
-    required Lesson lesson,
+    required String rightId,
     required LessonBookingOption option,
   }) async {
-    final rightId = lesson.lessonRightId;
-    if (rightId == null || rightId.isEmpty) {
-      _errorMessage = '이 수업에는 다시 예약할 수 있는 수업권이 없습니다.';
-      notifyListeners();
-      return false;
-    }
-
     try {
       await _repository.bookLessonRight(
         rightId: rightId,

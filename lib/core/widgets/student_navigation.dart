@@ -109,7 +109,7 @@ class StudentDrawer extends StatelessWidget {
                 color: primaryColor,
               ),
               title: const Text(
-                '예약 변경하기',
+                '수업 예약·변경',
                 style: forestringTextStyle,
               ),
               trailing: const Icon(Icons.navigate_next_rounded),
