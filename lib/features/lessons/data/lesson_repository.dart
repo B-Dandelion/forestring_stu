@@ -134,7 +134,8 @@ class LessonRepository {
           .from('lesson_cancellation_events')
           .select(
             'lesson_right_id, origin, actor_id, counts_toward_limit, '
-            'canceled_at, created_at',
+            'canceled_at, created_at, lesson_starts_at, '
+            'lesson_duration_minutes',
           )
           .eq('student_id', user.id)
           .order('created_at');
@@ -167,6 +168,13 @@ class LessonRepository {
                   canceledAtValue.toString(),
                 ).toLocal(),
                 countsTowardLimit: row['counts_toward_limit'] == true,
+                lessonStartsAt: row['lesson_starts_at'] == null
+                    ? null
+                    : DateTime.parse(
+                        row['lesson_starts_at'].toString(),
+                      ).toLocal(),
+                lessonDurationMinutes:
+                    row['lesson_duration_minutes'] as int?,
               ),
             );
       }
