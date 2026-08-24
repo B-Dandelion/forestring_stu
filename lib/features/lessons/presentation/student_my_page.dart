@@ -204,33 +204,23 @@ class _StudentMyPageState extends State<StudentMyPage> {
         cancellationLimit > countedStudentCancellations
             ? cancellationLimit - countedStudentCancellations
             : 0;
-    final rebookableCount = baseRights
-        .where(
-          (right) => right.status == 'available' && right.wasCanceled,
-        )
-        .length;
-    final flexAvailableCount = baseRights
-        .where(
-          (right) => right.status == 'available' && !right.wasCanceled,
-        )
+    final availableCount = semester.rights
+        .where((right) => right.status == 'available')
         .length;
 
     final chips = history.isRegular
         ? <String>[
+            '예약 가능 수업권 $availableCount개',
             '예약된 수업 ${semester.reservedRights}개',
             '취소 가능 $remainingCancellations회',
             '보강 수업권 ${carryoverCount == 0 ? '없음' : '$carryoverCount개'}',
-            if (rebookableCount > 0)
-              '재예약 가능 수업권 $rebookableCount개',
           ]
         : <String>[
             '기본 수업권 $baseCount개',
-            '예약 가능 수업권 $flexAvailableCount개',
+            '예약 가능 수업권 $availableCount개',
             '예약된 수업 ${semester.reservedRights}개',
             '취소 가능 $remainingCancellations회',
             '보강 수업권 ${carryoverCount == 0 ? '없음' : '$carryoverCount개'}',
-            if (rebookableCount > 0)
-              '재예약 가능 수업권 $rebookableCount개',
           ];
 
     return Container(
@@ -381,7 +371,8 @@ class _StudentMyPageState extends State<StudentMyPage> {
     final originalEnd = originalStart.add(
       Duration(minutes: right.durationMinutes),
     );
-    final cancellation = right.latestCancellation;
+    final cancellations = [...right.cancellations]
+      ..sort((a, b) => a.canceledAt.compareTo(b.canceledAt));
     final canceled = right.wasCanceled;
     final staffChanged = !canceled && lesson.isAcademyChanged;
     final displayStart = staffChanged ? lesson.startsAt : originalStart;
@@ -444,14 +435,15 @@ class _StudentMyPageState extends State<StudentMyPage> {
               ),
             ),
           ],
-          if (cancellation != null) ...[
+          if (cancellations.isNotEmpty) ...[
             const SizedBox(height: 9),
-            Text(
-              '${cancellation.actorLabel(history.studentId)} · '
-              '${DateFormat('M월 d일 HH:mm').format(cancellation.canceledAt)} 취소',
-              style: forestringTextStyle.copyWith(
-                color: Colors.redAccent,
-                fontSize: 12,
+            ...List.generate(
+              cancellations.length,
+              (index) => _cancellationHistoryItem(
+                history,
+                right,
+                cancellations[index],
+                index,
               ),
             ),
           ] else if (staffChanged && lesson.updatedAt != null) ...[
@@ -465,6 +457,59 @@ class _StudentMyPageState extends State<StudentMyPage> {
               ),
             ),
           ],
+        ],
+      ),
+    );
+  }
+
+  Widget _cancellationHistoryItem(
+    LessonHistoryData history,
+    LessonRightHistory right,
+    LessonCancellationHistory cancellation,
+    int index,
+  ) {
+    final lessonStartsAt = cancellation.lessonStartsAt;
+    final lessonEndsAt = lessonStartsAt?.add(
+      Duration(
+        minutes: cancellation.lessonDurationMinutes ?? right.durationMinutes,
+      ),
+    );
+    final lessonTimeLabel = lessonStartsAt == null || lessonEndsAt == null
+        ? null
+        : '${DateFormat('M월 d일 HH:mm').format(lessonStartsAt)} ~ '
+              '${DateFormat('HH:mm').format(lessonEndsAt)}';
+
+    return Container(
+      width: double.infinity,
+      margin: EdgeInsets.only(
+        bottom: index == right.cancellations.length - 1 ? 0 : 6,
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.redAccent.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '${index + 1}차 취소'
+            '${lessonTimeLabel == null ? '' : ' · $lessonTimeLabel'}',
+            style: forestringTextStyle.copyWith(
+              color: Colors.black54,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            '${cancellation.actorLabel(history.studentId)} · '
+            '${DateFormat('M월 d일 HH:mm').format(cancellation.canceledAt)} 취소',
+            style: forestringTextStyle.copyWith(
+              color: Colors.redAccent,
+              fontSize: 12,
+            ),
+          ),
         ],
       ),
     );
