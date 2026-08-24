@@ -162,12 +162,16 @@ class LessonCancellationHistory {
     required this.actorId,
     required this.canceledAt,
     required this.countsTowardLimit,
+    this.lessonStartsAt,
+    this.lessonDurationMinutes,
   });
 
   final String origin;
   final String actorId;
   final DateTime canceledAt;
   final bool countsTowardLimit;
+  final DateTime? lessonStartsAt;
+  final int? lessonDurationMinutes;
 
   String actorLabel(String studentId) {
     if (actorId == studentId || origin == 'student') {
