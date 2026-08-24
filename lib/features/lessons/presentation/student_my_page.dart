@@ -291,18 +291,35 @@ class _StudentMyPageState extends State<StudentMyPage> {
     }).toList();
 
     rights.sort((a, b) {
-      final aDate = a.originalStartsAt ?? a.currentStartsAt;
-      final bDate = b.originalStartsAt ?? b.currentStartsAt;
+      final aDate = _originalCardDate(a);
+      final bDate = _originalCardDate(b);
       if (aDate == null && bDate == null) {
         return a.sequenceNo.compareTo(b.sequenceNo);
       }
       if (aDate == null) return 1;
       if (bDate == null) return -1;
-      return aDate.compareTo(bDate);
+      final dateComparison = aDate.compareTo(bDate);
+      return dateComparison != 0
+          ? dateComparison
+          : a.sequenceNo.compareTo(b.sequenceNo);
     });
 
+    final rebookedRights = rights.where((right) => right.isRebooked).toList()
+      ..sort((a, b) {
+        final aDate = a.currentStartsAt;
+        final bDate = b.currentStartsAt;
+        if (aDate == null && bDate == null) {
+          return a.sequenceNo.compareTo(b.sequenceNo);
+        }
+        if (aDate == null) return 1;
+        if (bDate == null) return -1;
+        final dateComparison = aDate.compareTo(bDate);
+        return dateComparison != 0
+            ? dateComparison
+            : a.sequenceNo.compareTo(b.sequenceNo);
+      });
+
     final originalCards = <Widget>[];
-    final rebookCards = <Widget>[];
 
     for (final right in rights) {
       if (right.lesson != null) {
@@ -314,10 +331,11 @@ class _StudentMyPageState extends State<StudentMyPage> {
           ),
         );
       }
-      if (right.isRebooked) {
-        rebookCards.add(_rebookCard(history, right));
-      }
     }
+
+    final rebookCards = rebookedRights
+        .map((right) => _rebookCard(history, right))
+        .toList();
 
     if (originalCards.isEmpty && rebookCards.isEmpty) {
       return [_emptyCard('아직 등록된 수업 내역이 없습니다.')];
@@ -339,6 +357,18 @@ class _StudentMyPageState extends State<StudentMyPage> {
         ...rebookCards,
       ],
     ];
+  }
+
+  DateTime? _originalCardDate(LessonRightHistory right) {
+    final lesson = right.lesson;
+    if (lesson == null) {
+      return null;
+    }
+
+    final staffChanged = !right.wasCanceled && lesson.isAcademyChanged;
+    return staffChanged
+        ? lesson.startsAt
+        : right.originalStartsAt ?? lesson.startsAt;
   }
 
   Widget _originalCard(
