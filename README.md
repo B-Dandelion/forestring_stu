@@ -33,6 +33,26 @@ Teacher App과 동일한 Supabase 데이터를 사용하며, 수강생에게 필
 - 학기별 수업 이력 조회
 - 마이페이지 및 사용자 정보 확인
 
+## Screenshots
+
+<p align="center">
+  <img src="docs/student_01_schedule.png" width="30%" alt="정규 수업 일정" />
+  <img src="docs/student_02_makeup.png" width="30%" alt="보강 수업 일정" />
+  <img src="docs/student_03_rebooking.png" width="30%" alt="수업 재예약" />
+</p>
+
+<p align="center">
+  <b>정규 수업 일정</b> · <b>보강 수업 일정</b> · <b>수업 재예약</b>
+</p>
+
+<p align="center">
+  <img src="docs/student_04_history.png" width="30%" alt="학기별 수강 내역" />
+</p>
+
+<p align="center">
+  <b>학기별 수강 내역</b>
+</p>
+
 ## Main Flow
 
 ```mermaid
