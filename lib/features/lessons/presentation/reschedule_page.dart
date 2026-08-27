@@ -365,7 +365,7 @@ class _ReschedulePageState extends State<ReschedulePage> {
                       Padding(
                         padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
                         child: DropdownButtonFormField<String>(
-                          value: selectedRight?.id,
+                          initialValue: selectedRight?.id,
                           decoration: const InputDecoration(
                             labelText: '예약할 수업권',
                             border: OutlineInputBorder(),
