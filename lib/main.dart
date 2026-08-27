@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -11,18 +13,31 @@ import 'features/auth/presentation/auth_controller.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  AppConfig.validate();
-
-  await Supabase.initialize(
-    url: AppConfig.supabaseUrl,
-    publishableKey: AppConfig.supabasePublishableKey,
-  );
+  try {
+    AppConfig.validate();
+    await Supabase.initialize(
+      url: AppConfig.supabaseUrl,
+      publishableKey: AppConfig.supabasePublishableKey,
+    ).timeout(const Duration(seconds: 10));
+  } on TimeoutException {
+    runApp(
+      const _StartupFailureApp(
+        message: '앱 시작이 지연되고 있습니다.\n인터넷 연결을 확인한 뒤 앱을 다시 실행해주세요.',
+      ),
+    );
+    return;
+  } catch (_) {
+    runApp(
+      const _StartupFailureApp(
+        message: '앱을 시작하지 못했습니다.\n잠시 후 다시 실행해주세요.',
+      ),
+    );
+    return;
+  }
 
   final authController = AuthController(
     AuthRepository(),
   );
-
-  await authController.initialize();
 
   runApp(
     ChangeNotifierProvider.value(
@@ -30,6 +45,8 @@ Future<void> main() async {
       child: const ForestringStudent(),
     ),
   );
+
+  unawaited(authController.initialize());
 }
 
 class ForestringStudent extends StatelessWidget {
@@ -44,6 +61,41 @@ class ForestringStudent extends StatelessWidget {
       title: '포레스트링 수강생',
       theme: buildForestringTheme(),
       home: const AppGate(),
+    );
+  }
+}
+
+class _StartupFailureApp extends StatelessWidget {
+  const _StartupFailureApp({
+    required this.message,
+  });
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: buildForestringTheme(),
+      home: Scaffold(
+        backgroundColor: primaryColor,
+        body: SafeArea(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(28),
+              child: Text(
+                message,
+                textAlign: TextAlign.center,
+                style: forestringTextStyle.copyWith(
+                  color: Colors.white,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
