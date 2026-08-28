@@ -45,14 +45,27 @@ class AuthRepository {
           'pin': pin,
         },
       );
+    } on FunctionException catch (error) {
+      final details = error.details;
+      if (details is Map && details['message'] != null) {
+        throw AuthFailure(details['message'].toString());
+      }
+
+      throw const AuthFailure(
+        '로그인 서버에 연결하지 못했습니다. 네트워크 상태를 확인해주세요.',
+      );
     } catch (_) {
-      throw const AuthFailure('로그인 서버에 연결하지 못했습니다.');
+      throw const AuthFailure(
+        '로그인 서버에 연결하지 못했습니다. 네트워크 상태를 확인해주세요.',
+      );
     }
 
     final data = response.data;
 
     if (data is! Map) {
-      throw const AuthFailure('로그인 서버 응답 형식이 올바르지 않습니다.');
+      throw const AuthFailure(
+        '로그인 서버 응답을 확인하지 못했습니다. 잠시 후 다시 시도해주세요.',
+      );
     }
 
     final tokenHash = data['tokenHash'];
@@ -64,23 +77,27 @@ class AuthRepository {
       );
     }
 
+    AuthResponse authResponse;
+
     try {
-      final authResponse = await _client.auth.verifyOTP(
+      authResponse = await _client.auth.verifyOTP(
         type: OtpType.email,
         tokenHash: tokenHash,
       );
-
-      final session = authResponse.session;
-      if (session == null) {
-        throw const AuthFailure('로그인 세션을 생성하지 못했습니다.');
-      }
-
-      return session;
-    } on AuthFailure {
-      rethrow;
-    } on AuthException catch (error) {
-      throw AuthFailure('로그인 세션 생성에 실패했습니다: ${error.message}');
+    } on AuthException {
+      throw const AuthFailure(
+        '로그인 인증 정보를 확인하지 못했습니다. 잠시 후 다시 시도해주세요.',
+      );
     }
+
+    final session = authResponse.session;
+    if (session == null) {
+      throw const AuthFailure(
+        '로그인 세션을 생성하지 못했습니다. 다시 로그인해주세요.',
+      );
+    }
+
+    return session;
   }
 
   Future<CurrentProfile> fetchCurrentProfile() async {
