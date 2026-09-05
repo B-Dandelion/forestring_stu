@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="assets/img/student_login_logo.png" width="180" alt="Forestring Student logo" />
+  <img src="assets/img/student_login_logo.png" width="180" alt="포레스트링 학생 앱 로고" />
 </p>
 
-<h1 align="center">Forestring Student</h1>
+<h1 align="center">포레스트링 Student</h1>
 
 <p align="center">
   수강생이 자신의 수업 일정과 취소·보강 흐름을 직접 관리할 수 있도록 만든 <b>Flutter + Supabase 모바일 앱</b>
@@ -11,16 +11,19 @@
 <p align="center">
   <a href="https://github.com/B-Dandelion/Forestring_teach">Teacher App</a>
   ·
-  Current release: <code>v3.0.1</code>
+  Current release: <code>v3.0.2</code>
 </p>
 
 ---
 
 ## Overview
 
-Forestring Student는 학원 수강생이 자신의 수업 일정을 확인하고, 정해진 규칙 안에서 수업을 취소하거나 반환된 수업권으로 보강 일정을 다시 예약할 수 있도록 만든 앱입니다.
+포레스트링 Student는 학원 수강생이 자신의 수업 일정을 확인하고, 정해진 규칙 안에서 수업을 취소하거나 반환된 수업권으로 보강 일정을 다시 예약할 수 있도록 만든 앱입니다.
 
 Teacher App과 동일한 Supabase 데이터를 사용하며, 수강생에게 필요한 기능만 분리해 모바일 환경에서 빠르게 확인하고 처리할 수 있도록 구성했습니다.
+
+> **1인 개발 · 실제 운영 서비스**  
+> Teacher App과 같은 운영 데이터 및 수업 규칙을 공유하며 Android / iOS 앱으로 배포·운영하고 있습니다.
 
 ## Key Features
 
@@ -73,7 +76,7 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-    APP[Forestring Student\nFlutter / Dart]
+    APP[포레스트링 Student\nFlutter / Dart]
     APP --> AUTH[Supabase Auth]
     APP --> RPC[RLS + PostgreSQL RPC]
     AUTH --> DB[(PostgreSQL)]
@@ -149,7 +152,7 @@ flutter build ipa --release --dart-define-from-file=env/dev.json
 
 ## Related Project
 
-- [Forestring Teacher](https://github.com/B-Dandelion/Forestring_teach) — 선생님 / 지점장 / 마스터용 수업 운영·관리 앱 및 Supabase 백엔드
+- [포레스트링 Teacher](https://github.com/B-Dandelion/Forestring_teach) — 선생님 / 지점장 / 마스터용 수업 운영·관리 앱 및 Supabase 백엔드
 
 ## Notes
 
