@@ -1,5 +1,5 @@
 name: forestring_stu
-description: "Forestring App for students."
+description: "실제 운영 중인 포레스트링 학생·보호자용 수업 일정 관리 앱."
 publish_to: 'none'
 version: 3.0.2+14
 
